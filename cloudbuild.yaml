@@ -10,17 +10,17 @@ steps:
       - '--build-arg=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}'
       - '--build-arg=NEXT_PUBLIC_FIREBASE_APP_ID=${_NEXT_PUBLIC_FIREBASE_APP_ID}'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/sayops:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/sayops/app:$COMMIT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/sayops:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/sayops/app:latest'
       - '.'
 
-  # Push to Container Registry
+  # Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/sayops:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/sayops/app:$COMMIT_SHA']
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/sayops:latest']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/sayops/app:latest']
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -29,7 +29,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'sayops'
-      - '--image=gcr.io/$PROJECT_ID/sayops:$COMMIT_SHA'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/sayops/app:$COMMIT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
