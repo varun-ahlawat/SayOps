@@ -22,7 +22,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/sayops/app:latest']
 
-  # Deploy to Cloud Run
+  # Deploy to Cloud Run (secrets from Secret Manager; non-secret env from substitutions)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -38,7 +38,8 @@ steps:
       - '--cpu=1'
       - '--min-instances=0'
       - '--max-instances=10'
-      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,BQ_DATASET=sayops,TWILIO_ACCOUNT_SID=${_TWILIO_ACCOUNT_SID},TWILIO_AUTH_TOKEN=${_TWILIO_AUTH_TOKEN},TWILIO_PHONE_NUMBER=${_TWILIO_PHONE_NUMBER}'
+      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,BQ_DATASET=sayops'
+      - '--set-secrets=TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest,NEXT_PUBLIC_APP_URL=NEXT_PUBLIC_APP_URL:latest,ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,ELEVENLABS_VOICE_ID=ELEVENLABS_VOICE_ID:latest,NGROK_AUTHTOKEN=NGROK_AUTHTOKEN:latest'
 
 substitutions:
   _NEXT_PUBLIC_FIREBASE_API_KEY: ''
@@ -50,6 +51,10 @@ substitutions:
   _TWILIO_ACCOUNT_SID: ''
   _TWILIO_AUTH_TOKEN: ''
   _TWILIO_PHONE_NUMBER: ''
+  _NEXT_PUBLIC_APP_URL: ''
+  _ELEVENLABS_API_KEY: ''
+  _ELEVENLABS_VOICE_ID: ''
+  _NGROK_AUTHTOKEN: ''
   _CLOUD_RUN_HASH: 'evently-486001'
 
 options:
