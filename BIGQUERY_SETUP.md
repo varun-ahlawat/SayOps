@@ -1,6 +1,6 @@
 # BigQuery Database Setup Guide
 
-This guide walks you through setting up Google Cloud BigQuery as the database backend for SayOps.
+This guide walks you through setting up Google Cloud BigQuery as the database backend for SpeakOps.
 
 ## Prerequisites
 

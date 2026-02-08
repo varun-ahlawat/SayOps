@@ -71,7 +71,7 @@ export default function LandingPage() {
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Navigation */}
         <header className="flex items-center justify-between px-6 py-5 md:px-12 lg:px-20">
-          <span className="text-xl font-bold text-primary-foreground">SayOps</span>
+          <span className="text-xl font-bold text-primary-foreground">SpeakOps</span>
 
           <Button
             onClick={handleGoogleSignIn}

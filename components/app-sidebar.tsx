@@ -92,7 +92,7 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="/dashboard">
-                <span className="text-base font-semibold">SayOps</span>
+                <span className="text-base font-semibold">SpeakOps</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

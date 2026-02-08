@@ -320,7 +320,7 @@ export default function CreateAgentPage() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between border-b px-6 py-4">
-        <span className="text-xl font-bold">SayOps</span>
+        <span className="text-xl font-bold">SpeakOps</span>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
             Step {currentStep + 1} of {TOTAL_STEPS}
