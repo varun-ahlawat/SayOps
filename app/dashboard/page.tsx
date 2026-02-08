@@ -9,6 +9,7 @@ import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import { CallHistoryTable } from "@/components/call-history-table"
 import { AgentSettings } from "@/components/agent-settings"
+import { AgentChat } from "@/components/agent-chat"
 import {
   SidebarInset,
   SidebarProvider,
@@ -34,6 +35,7 @@ import {
   IconCoin,
   IconSettings,
   IconDashboard,
+  IconMessageChatbot,
 } from "@tabler/icons-react"
 import { useAuth } from "@/lib/auth-context"
 import { fetchAgents, fetchCalls, fetchStats } from "@/lib/api-client"
@@ -212,6 +214,12 @@ function DashboardContent() {
                         Tokens
                       </a>
                     </TabsTrigger>
+                    <TabsTrigger value="chat" asChild>
+                      <a href="/dashboard?tab=chat">
+                        <IconMessageChatbot className="mr-1.5 size-4" />
+                        <span className="hidden sm:inline">Chat</span>
+                      </a>
+                    </TabsTrigger>
                     <TabsTrigger value="settings" asChild>
                       <a href="/dashboard?tab=settings">
                         <IconSettings className="mr-1.5 size-4" />
@@ -288,6 +296,10 @@ function DashboardContent() {
 
                 <TabsContent value="tokens" className="flex flex-col gap-4 md:gap-6">
                   <TokenUsageCard agents={agents} />
+                </TabsContent>
+
+                <TabsContent value="chat" className="flex flex-1 flex-col">
+                  <AgentChat />
                 </TabsContent>
 
                 <TabsContent value="settings" className="flex flex-col gap-4 md:gap-6">

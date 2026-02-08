@@ -99,3 +99,19 @@ export async function uploadFiles(agentId: string, files: File[]): Promise<{ upl
 export async function fetchDocuments(agentId: string): Promise<UserDocument[]> {
   return apiFetch<UserDocument[]>(`/api/documents?agentId=${agentId}`)
 }
+
+// ---- AI Agent Chat ----
+
+export interface ChatResponse {
+  output: string
+  sessionID: string
+  steps: number
+  toolCalls: { name: string; args: unknown }[]
+}
+
+export async function chatAgent(prompt: string, agent?: string): Promise<ChatResponse> {
+  return apiFetch<ChatResponse>("/api/chat", {
+    method: "POST",
+    body: JSON.stringify({ prompt, agent }),
+  })
+}
