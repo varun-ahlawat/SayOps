@@ -21,6 +21,7 @@ config({ path: resolve(process.cwd(), ".env.local") })
 import { textToSpeech, speechToText } from "../lib/elevenlabs"
 import { generateAgentResponse } from "../lib/gemini"
 import { storeAudio, getAudio } from "../lib/audio-cache"
+import { getHoldMusic } from "../lib/hold-music"
 import { v4 as uuid } from "uuid"
 
 // ─── Helpers ───
@@ -173,7 +174,37 @@ async function main() {
     log("✓", "One-time retrieval confirmed (second get returns null)")
   })
 
-  // ── 6. Full Round-Trip ──
+  // ── 6. Hold Music Generation ──
+  await runTest("Hold Music: Generate ambient loop", async () => {
+    const music = getHoldMusic()
+
+    if (!music || music.length === 0) {
+      throw new Error("Hold music generation returned empty buffer")
+    }
+
+    // Verify WAV header
+    const header = music.toString("ascii", 0, 4)
+    if (header !== "RIFF") {
+      throw new Error(`Invalid WAV header: expected "RIFF", got "${header}"`)
+    }
+
+    const format = music.toString("ascii", 8, 12)
+    if (format !== "WAVE") {
+      throw new Error(`Invalid WAV format: expected "WAVE", got "${format}"`)
+    }
+
+    log("✓", `Generated ${music.length} bytes (${(music.length / 1024).toFixed(1)} KB)`)
+    log("✓", `Valid WAV format: RIFF/WAVE header confirmed`)
+
+    // Verify caching (second call should return same buffer)
+    const music2 = getHoldMusic()
+    if (music !== music2) {
+      throw new Error("Hold music not cached — second call returned different buffer")
+    }
+    log("✓", "Caching works (same buffer returned on second call)")
+  })
+
+  // ── 7. Full Round-Trip ──
   await runTest("Full Round-Trip: TTS → STT → Gemini → TTS", async () => {
     // Simulate: agent says something → we TTS it → STT it back → use as user input → Gemini responds → TTS the response
 
@@ -205,8 +236,8 @@ async function main() {
     log("✓", `Step 5: Audio cached and retrieved (${cached.length} bytes)`)
   })
 
-  // ── 7. Webhook Simulation ──
-  await runTest("Webhook Simulation: Test respond endpoint via HTTP", async () => {
+  // ── 8. Webhook Simulation ──
+  await runTest("Webhook Simulation: Test endpoints via HTTP", async () => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
     // Check if dev server is running
@@ -222,10 +253,27 @@ async function main() {
       return
     }
 
-    // Test audio endpoint with a fake audio
+    // Test hold music endpoint
+    const holdRes = await fetch(`${appUrl}/api/twilio/hold-music`)
+    if (holdRes.ok) {
+      const contentType = holdRes.headers.get("content-type")
+      const body = await holdRes.arrayBuffer()
+      log("✓", `Hold music endpoint: ${body.byteLength} bytes, Content-Type: ${contentType}`)
+
+      // Verify it's valid WAV
+      const wav = Buffer.from(body)
+      const riff = wav.toString("ascii", 0, 4)
+      if (riff === "RIFF") {
+        log("✓", "Hold music is valid WAV (RIFF header)")
+      } else {
+        log("⚠", `Unexpected header: ${riff}`)
+      }
+    } else {
+      log("⚠", `Hold music endpoint returned ${holdRes.status}`)
+    }
+
+    // Test audio endpoint with unknown ID (should 404)
     const testAudioId = uuid()
-    // We can't directly access the in-memory cache of the running server from here
-    // so we just verify the endpoint returns 404 for unknown IDs
     const audioRes = await fetch(`${appUrl}/api/twilio/audio/${testAudioId}`)
     if (audioRes.status === 404) {
       log("✓", "Audio endpoint returns 404 for unknown audioId (correct)")
