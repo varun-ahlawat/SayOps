@@ -57,3 +57,23 @@ Rules:
 
   return text.trim()
 }
+
+/**
+ * Generate a 1-2 sentence summary of a completed call transcript.
+ * Used for cross-call memory — future calls from the same number see this summary.
+ */
+export async function summarizeCallTranscript(
+  turns: { speaker: string; text: string }[]
+): Promise<string> {
+  if (turns.length === 0) return "No conversation recorded."
+
+  const transcript = turns.map((t) => `${t.speaker}: ${t.text}`).join("\n")
+  const result = await getModel().generateContent(
+    `Summarize this phone call in 1-2 concise sentences. Focus on: what the caller wanted, what was resolved, any commitments made.\n\nTranscript:\n${transcript}\n\nSummary:`
+  )
+
+  return (
+    result.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ??
+    "Call completed."
+  )
+}

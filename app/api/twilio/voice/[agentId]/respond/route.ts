@@ -3,6 +3,7 @@ import { query, table, insertRow } from "@/lib/bigquery"
 import { v4 as uuid } from "uuid"
 import { speechToText, textToSpeech } from "@/lib/elevenlabs"
 import { storeAudio } from "@/lib/audio-cache"
+import { getCallState } from "@/lib/call-state"
 import { Twilio } from "twilio"
 import type { Agent, ConversationTurn } from "@/lib/types"
 
@@ -161,7 +162,16 @@ async function processAndRedirect(
     return
   }
 
-  // 5. Call evently-backend agent (has tools, memory, vector search — full context in-memory)
+  // 5. Resolve cross-call memory (prefetched during greeting — already resolved by now)
+  const { callerHistoryMap } = getCallState()
+  const historyPromise = callerHistoryMap.get(callId)
+  let callerHistory: string | undefined
+  if (historyPromise) {
+    callerHistory = (await historyPromise) ?? undefined
+    callerHistoryMap.delete(callId) // Only needed on first turn; session persists after
+  }
+
+  // 6. Call evently-backend agent (has tools, memory, vector search — full context in-memory)
   const backendRes = await fetch(`${agentBackendUrl}/call/turn`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -172,6 +182,7 @@ async function processAndRedirect(
       agentContext: agents[0].context || "",
       userText,
       userId: agents[0].user_id,
+      callerHistory,
     }),
     signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
   })

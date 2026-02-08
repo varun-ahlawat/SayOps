@@ -28,6 +28,7 @@ export interface CallHistoryEntry {
   timestamp: string
   duration_seconds: number
   summary: string
+  caller_phone?: string
 }
 
 export interface ConversationTurn {
