@@ -133,6 +133,13 @@ function DashboardContent() {
           fetchAgents(),
           fetchStats(),
         ])
+
+        // Redirect to create-agent if user has no agents
+        if (agentsData.length === 0) {
+          router.push("/create-agent")
+          return
+        }
+
         setAgents(agentsData)
         setStats(statsData)
 

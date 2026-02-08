@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const uid = await verifyToken(req.headers.get("authorization"))
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  try {
   // Get user's agents
   const agents = await query<Agent>(
     `SELECT * FROM ${table("agents")} WHERE user_id = @uid`,
@@ -91,4 +92,8 @@ export async function GET(req: NextRequest) {
     weekly_calls,
     monthly_calls,
   } satisfies DashboardStats)
+  } catch (err: any) {
+    console.error("GET /api/stats error:", err)
+    return NextResponse.json({ error: err.message || "Failed to fetch stats" }, { status: 500 })
+  }
 }
