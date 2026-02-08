@@ -10,6 +10,11 @@ const agentBackendUrl = process.env.AGENT_BACKEND_URL || "http://localhost:3001"
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sayops-app.run.app"
 const MAX_TURNS = 20
+const BACKEND_TIMEOUT_MS = 90_000 // 90s — agent loop has 60s per Gemini call × up to 10 steps
+
+// Idempotency guard: track recording URLs we're already processing.
+// Prevents duplicate processing if Twilio retries a webhook or sends overlapping callbacks.
+const processingRecordings = new Set<string>()
 
 /**
  * POST /api/twilio/voice/[agentId]/respond
@@ -36,10 +41,20 @@ export async function POST(
     const recordingUrl = formData.get("RecordingUrl") as string
     const callSid = formData.get("CallSid") as string
 
-    // Twilio sends recordingStatusCallback without RecordingUrl — ignore
+    // No recording (e.g. Twilio status ping) — ignore
     if (!recordingUrl) {
       return new NextResponse("", { status: 204 })
     }
+
+    // Idempotency: skip if we've already started processing this recording.
+    // Prevents double processing if Twilio retries or sends duplicate webhooks.
+    if (processingRecordings.has(recordingUrl)) {
+      console.log(`[Respond] Duplicate recording webhook for ${callId}, skipping`)
+      return new NextResponse("", { status: 204 })
+    }
+    processingRecordings.add(recordingUrl)
+    // Clean up after 5 minutes to prevent memory leak
+    setTimeout(() => processingRecordings.delete(recordingUrl), 5 * 60 * 1000)
 
     console.log(`[Respond] Recording received for call ${callId}, starting background processing`)
 
@@ -133,56 +148,41 @@ async function processAndRedirect(
     return
   }
 
-  // Scripted responses for first few turns (demo)
-  const SCRIPTED_RESPONSES = [
-    "Yes — Bob has availability on Thursday and Saturday. What works best for you?",
-    "For a small storefront, pricing typically ranges between 200 and 300 depending on window count. Would you like me to give you a more exact quote?",
-    "Yes I can! What is your email address?",
-    "You're scheduled for Thursday at 5pm. A confirmation will be sent shortly. Is there anything else I can help you with?",
-  ]
+  // 4. Fetch agent context (name, context, user_id for the backend)
+  const agents = await query<Agent & { user_id?: string }>(
+    `SELECT name, context, user_id FROM ${table("agents")} WHERE id = @agentId LIMIT 1`,
+    { agentId }
+  )
 
-  const userTurnIndex = Math.floor((turnOrder - 1) / 2)
-  let agentResponseText: string
-
-  if (userTurnIndex < SCRIPTED_RESPONSES.length) {
-    agentResponseText = SCRIPTED_RESPONSES[userTurnIndex]
-    console.log(`[Pipeline] Scripted response #${userTurnIndex}: "${agentResponseText}" (${Date.now() - startTime}ms)`)
-  } else {
-    // Fall through to AI agent for turns beyond the script
-    const agents = await query<Agent & { user_id?: string }>(
-      `SELECT name, context, user_id FROM ${table("agents")} WHERE id = @agentId LIMIT 1`,
-      { agentId }
-    )
-
-    if (agents.length === 0) {
-      await redirectCall(callSid, buildTwiml(
-        `<Say>This agent is no longer available.</Say><Hangup/>`
-      ))
-      return
-    }
-
-    const backendRes = await fetch(`${agentBackendUrl}/call/turn`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        callId,
-        agentId,
-        agentName: agents[0].name,
-        agentContext: agents[0].context || "",
-        userText,
-        userId: agents[0].user_id,
-      }),
-    })
-
-    if (!backendRes.ok) {
-      const errText = await backendRes.text().catch(() => "unknown error")
-      throw new Error(`Agent backend error (${backendRes.status}): ${errText}`)
-    }
-
-    const { output } = await backendRes.json() as { output: string }
-    agentResponseText = output
-    console.log(`[Pipeline] Agent: "${agentResponseText}" (${Date.now() - startTime}ms)`)
+  if (agents.length === 0) {
+    await redirectCall(callSid, buildTwiml(
+      `<Say>This agent is no longer available.</Say><Hangup/>`
+    ))
+    return
   }
+
+  // 5. Call evently-backend agent (has tools, memory, vector search — full context in-memory)
+  const backendRes = await fetch(`${agentBackendUrl}/call/turn`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      callId,
+      agentId,
+      agentName: agents[0].name,
+      agentContext: agents[0].context || "",
+      userText,
+      userId: agents[0].user_id,
+    }),
+    signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+  })
+
+  if (!backendRes.ok) {
+    const errText = await backendRes.text().catch(() => "unknown error")
+    throw new Error(`Agent backend error (${backendRes.status}): ${errText}`)
+  }
+
+  const { output: agentResponseText } = await backendRes.json() as { output: string }
+  console.log(`[Pipeline] Agent: "${agentResponseText}" (${Date.now() - startTime}ms)`)
 
   // 7. Save agent turn
   await insertRow("conversation_turns", {

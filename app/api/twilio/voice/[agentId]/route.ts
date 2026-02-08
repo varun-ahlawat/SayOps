@@ -2,18 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { query, table, insertRow } from "@/lib/bigquery"
 import { v4 as uuid } from "uuid"
 import type { Agent } from "@/lib/types"
+import { getCallState } from "@/lib/call-state"
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sayops-app.run.app"
 const agentBackendUrl = process.env.AGENT_BACKEND_URL || "http://localhost:3001"
-
-// Persist SSE keepalive connections across Next.js API route invocations
-const globalKeepalive = globalThis as typeof globalThis & {
-  __callKeepalives?: Map<string, AbortController>
-}
-if (!globalKeepalive.__callKeepalives) {
-  globalKeepalive.__callKeepalives = new Map()
-}
-const keepalives = globalKeepalive.__callKeepalives
 
 /**
  * POST /api/twilio/voice/[agentId]
@@ -68,6 +60,10 @@ export async function POST(
 
     console.log(`[Twilio Webhook] Call logged: ${callId}`)
 
+    // Track call state: SSE keepalive + callSid↔callId mapping for cleanup
+    const { keepalives, callSidMap } = getCallState()
+    callSidMap.set(callSid, callId)
+
     // Open SSE keepalive to agent backend (keeps Cloud Run instance warm)
     const keepaliveAbort = new AbortController()
     keepalives.set(callId, keepaliveAbort)
@@ -83,10 +79,13 @@ export async function POST(
     // Greet and start recording for first turn
     const respondUrl = `${appUrl}/api/twilio/voice/${agentId}/respond?callId=${callId}`
 
+    // FIX: Removed recordingStatusCallback — it was causing double processing.
+    // Twilio calls both `action` and `recordingStatusCallback` with the RecordingUrl,
+    // resulting in duplicate STT, agent invocations, TTS, and conversation turns.
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Thanks for calling ${escapeXml(agentName)}. How can I help you today?</Say>
-  <Record maxLength="30" timeout="3" playBeep="false" action="${respondUrl}" recordingStatusCallback="${respondUrl}" />
+  <Say voice="alice">Hello! You've reached ${escapeXml(agentName)}. How can I help you today?</Say>
+  <Record maxLength="30" timeout="3" playBeep="false" action="${respondUrl}" />
   <Say voice="alice">I didn't hear anything. Goodbye!</Say>
   <Hangup/>
 </Response>`
