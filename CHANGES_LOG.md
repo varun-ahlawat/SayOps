@@ -1,4 +1,4 @@
-# SayOps Changes Log
+# SpeakOps Changes Log
 
 All changes made during the ElevenLabs + Gemini voice AI integration.
 

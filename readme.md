@@ -1,4 +1,4 @@
-# SayOps
+# SpeakOps
 
 AI-powered customer representatives platform. Create intelligent agents that handle customer phone calls, answer questions, and complete requests.
 
@@ -22,8 +22,8 @@ AI-powered customer representatives platform. Create intelligent agents that han
 
 2. Clone your forked repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/SayOps.git
-   cd SayOps
+   git clone https://github.com/YOUR_USERNAME/SpeakOps.git
+   cd SpeakOps
    ```
 
 ### Install Dependencies
@@ -58,7 +58,7 @@ npm run start
 ## Project Structure
 
 ```
-SayOps/
+SpeakOps/
 ├── app/                    # Next.js App Router pages
 │   ├── page.tsx           # Landing page
 │   ├── dashboard/         # Main dashboard

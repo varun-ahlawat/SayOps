@@ -61,7 +61,7 @@ export default function LoginPage() {
             <IconArrowLeft className="size-4" />
             <span className="text-sm">Back to home</span>
           </Link>
-          <span className="text-xl font-bold">SayOps</span>
+          <span className="text-xl font-bold">SpeakOps</span>
         </div>
 
         <Card>

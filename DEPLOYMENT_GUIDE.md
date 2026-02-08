@@ -1,6 +1,6 @@
 # 🚀 Deploy Twilio Integration to GCP Cloud Run
 
-This guide shows how to deploy SayOps with Twilio integration to Cloud Run so it runs 24/7.
+This guide shows how to deploy SpeakOps with Twilio integration to Cloud Run so it runs 24/7.
 
 ## 📋 Prerequisites
 

@@ -92,7 +92,7 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="/dashboard">
-                <span className="text-base font-semibold">SayOps</span>
+                <span className="text-base font-semibold">SpeakOps</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -108,7 +108,7 @@ export function AppSidebar({
             {agents.map((agent) => (
               <SidebarMenuItem key={agent.id}>
                 <SidebarMenuButton asChild>
-                  <a href={`/dashboard?agent=${agent.id}`}>
+                  <a href={`/dashboard?tab=settings&agent=${agent.id}`}>
                     <IconRobot />
                     <span>{agent.name}</span>
                   </a>
