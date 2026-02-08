@@ -108,7 +108,7 @@ export function AppSidebar({
             {agents.map((agent) => (
               <SidebarMenuItem key={agent.id}>
                 <SidebarMenuButton asChild>
-                  <a href={`/dashboard?agent=${agent.id}`}>
+                  <a href={`/dashboard?tab=settings&agent=${agent.id}`}>
                     <IconRobot />
                     <span>{agent.name}</span>
                   </a>
