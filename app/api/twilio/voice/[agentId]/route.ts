@@ -12,9 +12,9 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sayops-app.run.app"
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { agentId: string } }
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
-  const agentId = params.agentId
+  const { agentId } = await params
 
   console.log(`[Twilio Webhook] Incoming call for agent: ${agentId}`)
 

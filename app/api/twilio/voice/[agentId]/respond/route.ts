@@ -21,9 +21,9 @@ const MAX_TURNS = 20
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { agentId: string } }
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
-  const agentId = params.agentId
+  const { agentId } = await params
   const callId = req.nextUrl.searchParams.get("callId")
 
   if (!callId) {

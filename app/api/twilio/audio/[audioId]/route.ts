@@ -8,9 +8,9 @@ import { getAudio } from "@/lib/audio-cache"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { audioId: string } }
+  { params }: { params: Promise<{ audioId: string }> }
 ) {
-  const audioId = params.audioId
+  const { audioId } = await params
   const audio = getAudio(audioId)
 
   if (!audio) {
