@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyToken } from "@/lib/firebase-admin"
 import { query, insertRow, table } from "@/lib/bigquery"
 import { v4 as uuid } from "uuid"
+import { provisionPhoneNumber } from "@/lib/twilio"
 import type { Agent } from "@/lib/types"
 
 /** GET /api/agents — list all agents for the current user */
@@ -29,8 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "name is required" }, { status: 400 })
   }
 
+  const agentId = uuid()
+
+  // Provision Twilio phone number for multi-tenant setup
+  const phoneNumber = await provisionPhoneNumber(agentId)
+
   const agent: Agent = {
-    id: uuid(),
+    id: agentId,
     user_id: uid,
     name,
     status: "active",
@@ -40,7 +46,8 @@ export async function POST(req: NextRequest) {
     money_spent: 0,
     max_call_time: 300,
     context: context || "",
-    cellular_enabled: false,
+    cellular_enabled: phoneNumber !== null,
+    phone_number: phoneNumber,
   }
 
   await insertRow("agents", agent)

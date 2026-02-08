@@ -19,6 +19,7 @@ export interface Agent {
   max_call_time: number
   context: string
   cellular_enabled: boolean
+  phone_number: string | null
 }
 
 export interface CallHistoryEntry {
