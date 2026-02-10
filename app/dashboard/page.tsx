@@ -8,109 +8,27 @@ import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import { CallHistoryTable } from "@/components/call-history-table"
-import { AgentSettings } from "@/components/agent-settings"
-import { AgentChat } from "@/components/agent-chat"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import {
-  IconPhone,
-  IconChartBar,
-  IconCoin,
-  IconSettings,
-  IconDashboard,
-  IconMessageChatbot,
-} from "@tabler/icons-react"
+import { IconRobot } from "@tabler/icons-react"
 import { useAuth } from "@/lib/auth-context"
 import { fetchAgents, fetchCalls, fetchStats } from "@/lib/api-client"
 import type { Agent, CallHistoryEntryWithTurns, DashboardStats } from "@/lib/types"
-
-function TokenUsageCard({ agents }: { agents: Agent[] }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2">
-      {agents.map((agent) => (
-        <Card key={agent.id}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {agent.name}
-              <Badge variant={agent.status === "active" ? "default" : "secondary"}>
-                {agent.status}
-              </Badge>
-            </CardTitle>
-            <CardDescription>Token consumption breakdown</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tokens Used</span>
-                  <span className="font-medium tabular-nums">
-                    {(agent.token_usage / 1000).toFixed(1)}K
-                  </span>
-                </div>
-                <Progress
-                  value={(agent.token_usage / 1000000) * 100}
-                  className="h-2"
-                />
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Budget Used</span>
-                  <span className="font-medium tabular-nums">
-                    ${agent.money_spent.toFixed(2)}
-                  </span>
-                </div>
-                <Progress
-                  value={(agent.money_spent / 200) * 100}
-                  className="h-2"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Total Calls</p>
-                  <p className="text-lg font-semibold tabular-nums">
-                    {agent.total_calls.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Avg Tokens/Call</p>
-                  <p className="text-lg font-semibold tabular-nums">
-                    {agent.total_calls > 0
-                      ? Math.round(agent.token_usage / agent.total_calls).toLocaleString()
-                      : "0"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  )
-}
 
 function DashboardContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
 
-  const activeTab = searchParams.get("tab") || "overview"
   const agentId = searchParams.get("agent") || ""
 
   const [agents, setAgents] = useState<Agent[]>([])
@@ -180,134 +98,42 @@ function DashboardContent() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" agents={agents} />
+      <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {/* Tab Navigation */}
-              <Tabs value={activeTab} className="w-full">
-                <div className="px-4 lg:px-6">
-                  <TabsList>
-                    <TabsTrigger value="overview" asChild>
-                      <a href="/dashboard">
-                        <IconDashboard className="mr-1.5 size-4" />
-                        Overview
-                      </a>
-                    </TabsTrigger>
-                    <TabsTrigger value="calls" asChild>
-                      <a href="/dashboard?tab=calls">
-                        <IconPhone className="mr-1.5 size-4" />
-                        Calls
-                      </a>
-                    </TabsTrigger>
-                    <TabsTrigger value="analytics" asChild>
-                      <a href="/dashboard?tab=analytics">
-                        <IconChartBar className="mr-1.5 size-4" />
-                        Analytics
-                      </a>
-                    </TabsTrigger>
-                    <TabsTrigger value="tokens" asChild>
-                      <a href="/dashboard?tab=tokens">
-                        <IconCoin className="mr-1.5 size-4" />
-                        Tokens
-                      </a>
-                    </TabsTrigger>
-                    <TabsTrigger value="chat" asChild>
-                      <a href="/dashboard?tab=chat">
-                        <IconMessageChatbot className="mr-1.5 size-4" />
-                        <span className="hidden sm:inline">Chat</span>
-                      </a>
-                    </TabsTrigger>
-                    <TabsTrigger value="settings" asChild>
-                      <a href="/dashboard?tab=settings">
-                        <IconSettings className="mr-1.5 size-4" />
-                        <span className="hidden sm:inline">Settings</span>
-                      </a>
-                    </TabsTrigger>
-                  </TabsList>
+        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 lg:p-6">
+          {/* Agent Status Card */}
+          {selectedAgent && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                      <IconRobot className="size-5" />
+                    </div>
+                    <div>
+                      <CardTitle>{selectedAgent.name}</CardTitle>
+                      <CardDescription className="font-mono text-xs">
+                        {selectedAgent.phone_number || "No phone number assigned"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge variant={selectedAgent.status === "active" ? "default" : "secondary"}>
+                    {selectedAgent.status}
+                  </Badge>
                 </div>
+              </CardHeader>
+            </Card>
+          )}
 
-                <TabsContent value="overview" className="flex flex-col gap-4 md:gap-6">
-                  {stats && <SectionCards stats={stats} agents={agents} />}
-                  <div className="px-4 lg:px-6">
-                    {stats && <ChartAreaInteractive data={stats.calls_per_day} agents={agents} />}
-                  </div>
-                  <div className="px-4 lg:px-6">
-                    <CallHistoryTable calls={calls.slice(0, 4)} />
-                  </div>
-                </TabsContent>
+          {/* Stats */}
+          {stats && <SectionCards stats={stats} agents={agents} />}
 
-                <TabsContent value="calls" className="flex flex-col gap-4 md:gap-6">
-                  <div className="px-4 lg:px-6">
-                    <CallHistoryTable calls={calls} />
-                  </div>
-                </TabsContent>
+          {/* Call Volume Chart */}
+          {stats && <ChartAreaInteractive data={stats.calls_per_day} agents={agents} />}
 
-                <TabsContent value="analytics" className="flex flex-col gap-4 md:gap-6">
-                  {stats && <SectionCards stats={stats} agents={agents} />}
-                  <div className="px-4 lg:px-6">
-                    {stats && <ChartAreaInteractive data={stats.calls_per_day} agents={agents} />}
-                  </div>
-                  {/* Weekly/Monthly Summary */}
-                  <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-3">
-                    <Card>
-                      <CardHeader>
-                        <CardDescription>This Week</CardDescription>
-                        <CardTitle className="text-2xl font-semibold tabular-nums">
-                          {stats?.weekly_calls.toLocaleString() || "0"}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                          Calls handled Mon-Sun
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardDescription>This Month</CardDescription>
-                        <CardTitle className="text-2xl font-semibold tabular-nums">
-                          {stats?.monthly_calls.toLocaleString() || "0"}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                          Total calls this month
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardDescription>Total Agents</CardDescription>
-                        <CardTitle className="text-2xl font-semibold tabular-nums">
-                          {agents.length}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                          {agents.filter((a) => a.status === "active").length} active
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="tokens" className="flex flex-col gap-4 md:gap-6">
-                  <TokenUsageCard agents={agents} />
-                </TabsContent>
-
-                <TabsContent value="chat" className="flex flex-1 flex-col">
-                  <AgentChat />
-                </TabsContent>
-
-                <TabsContent value="settings" className="flex flex-col gap-4 md:gap-6">
-                  {selectedAgent && <AgentSettings agent={selectedAgent} />}
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
+          {/* Recent Calls */}
+          <CallHistoryTable calls={calls.slice(0, 5)} />
         </div>
       </SidebarInset>
     </SidebarProvider>
