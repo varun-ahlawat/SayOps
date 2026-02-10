@@ -41,6 +41,25 @@ export async function POST(req: NextRequest) {
     // Provision Twilio phone number for multi-tenant setup
     const phoneNumber = await provisionPhoneNumber(agentId)
 
+    // Default system prompt when no custom context is provided
+    const defaultContext = `You are a friendly, professional AI phone assistant for ${name}. Your job is to help callers with their questions and requests.
+
+Guidelines:
+- Greet callers warmly and introduce yourself as a representative of ${name}.
+- Listen carefully to what the caller needs before responding.
+- Be concise and clear — phone conversations should be natural.
+- If you don't know the answer, say so honestly and offer to take a message.
+- If a caller is upset, be empathetic and patient.
+- When ending a call, summarize any action items and thank the caller.
+
+You can help with:
+- Answering questions about the business, products, and services
+- Scheduling appointments and callbacks
+- Taking messages for the business owner
+- Providing basic pricing and availability information
+
+If a request is beyond your capabilities, politely let the caller know and offer to have a human follow up.`
+
     const agent: Agent = {
       id: agentId,
       user_id: uid,
@@ -51,7 +70,7 @@ export async function POST(req: NextRequest) {
       token_usage: 0,
       money_spent: 0,
       max_call_time: 300,
-      context: context || "",
+      context: context || defaultContext,
       cellular_enabled: phoneNumber !== null,
       phone_number: phoneNumber,
     }
