@@ -27,6 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Dev bypass: Use a mock user in development
+    if (process.env.NODE_ENV === 'development') {
+      setUser({
+        uid: 'dev-user',
+        email: 'dev@evently.local',
+        displayName: 'Dev User',
+        photoURL: 'https://avatar.vercel.sh/dev',
+        getIdToken: async () => 'dev-token',
+      } as any)
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u)
       setLoading(false)

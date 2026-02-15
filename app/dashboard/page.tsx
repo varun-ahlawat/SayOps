@@ -19,9 +19,11 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { IconRobot } from "@tabler/icons-react"
+import { IconRobot, IconPlus } from "@tabler/icons-react"
 import { useAuth } from "@/lib/auth-context"
 import { fetchAgents, fetchCalls, fetchStats } from "@/lib/api-client"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import type { Agent, CallHistoryEntryWithTurns, DashboardStats } from "@/lib/types"
 
 function DashboardContent() {
@@ -101,7 +103,20 @@ function DashboardContent() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 lg:p-6">
+        <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 lg:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+              <p className="text-muted-foreground mt-1">Manage your AI agents and monitor performance.</p>
+            </div>
+            <Button asChild className="gap-2 shadow-sm">
+              <Link href="/create-agent">
+                <IconPlus className="size-4" />
+                Create Agent
+              </Link>
+            </Button>
+          </div>
+
           {/* Agent Status Card */}
           {selectedAgent && (
             <Card>

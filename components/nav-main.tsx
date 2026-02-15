@@ -1,6 +1,7 @@
 "use client"
 
 import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react"
+import Link from "next/link"
 
 import { Button } from '@/components/ui/button'
 import {
@@ -27,21 +28,24 @@ export function NavMain({
           <SidebarMenuItem className="flex items-center gap-2">
             <SidebarMenuButton
               asChild
-              tooltip="Quick Create"
+              tooltip="Create New Agent"
               className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
             >
-              <a href="/create-agent">
+              <Link href="/create-agent">
                 <IconCirclePlusFilled />
-                <span>Quick Create</span>
-              </a>
+                <span>Create New Agent</span>
+              </Link>
             </SidebarMenuButton>
             <Button
               size="icon"
               className="size-8 group-data-[collapsible=icon]:opacity-0"
               variant="outline"
+              asChild
             >
-              <IconMail />
-              <span className="sr-only">Inbox</span>
+              <Link href="/history">
+                <IconMail />
+                <span className="sr-only">Call History</span>
+              </Link>
             </Button>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -49,10 +53,10 @@ export function NavMain({
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
-                <a href={item.url}>
+                <Link href={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

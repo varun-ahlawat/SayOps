@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Conversation } from "@/lib/types"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export function NavSessions({
   sessions,
@@ -52,10 +53,10 @@ export function NavSessions({
         {sessions.slice(0, 5).map((session) => (
           <SidebarMenuItem key={session.id}>
             <SidebarMenuButton asChild>
-              <a href={`/assistant/${session.id}`}>
+              <Link href={`/assistant/${session.id}`}>
                 <IconMessageChatbot />
-                <span className="truncate">{session.metadata?.summary || "Strategy Session"}</span>
-              </a>
+                <span className="truncate">{session.metadata?.summary || "Session Detail"}</span>
+              </Link>
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

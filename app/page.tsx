@@ -62,15 +62,16 @@ export default function LandingPage() {
         {/* Navigation */}
         <header className="flex items-center justify-between px-6 py-5 md:px-12 lg:px-20">
           <span className="text-xl font-bold text-primary-foreground">SpeakOps</span>
-
-          <Button
+          
+          {/* I didn't like this redundant button! */}
+          {/* <Button  
             onClick={handleGoogleSignIn}
             disabled={signingIn || loading}
             className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90"
           >
             <IconBrandGoogle className="mr-2 size-4" />
             {signingIn ? "Signing in..." : "Continue with Google"}
-          </Button>
+          </Button> */}
         </header>
 
         {/* Hero Section */}

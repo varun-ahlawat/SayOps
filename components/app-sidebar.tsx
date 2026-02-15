@@ -7,6 +7,7 @@ import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { NavDocuments } from "@/components/nav-documents"
 import { NavSessions } from "@/components/nav-sessions"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
@@ -20,17 +21,28 @@ import { useAuth } from "@/lib/auth-context"
 import { fetchConversations, chatWithAgent } from "@/lib/api-client"
 import { Conversation } from "@/lib/types"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 const navMain = [
   {
-    title: "Dashboard",
+    title: "Overview",
     url: "/dashboard",
     icon: IconDashboard,
+  },
+  {
+    title: "Strategy Assistant",
+    url: "/assistant",
+    icon: IconMessageChatbot,
   },
   {
     title: "Call History",
     url: "/history",
     icon: IconHistory,
+  },
+  {
+    title: "Knowledge Base",
+    url: "/documents",
+    icon: IconFileUpload,
   },
 ]
 
@@ -71,15 +83,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/dashboard">
+              <Link href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <IconMessageChatbot className="size-5" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="text-base font-bold">SpeakOps</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">Business Intelligence</span>
+                  <span className="text-base font-bold text-foreground">SpeakOps</span>
+                  <span className="text-[10px] font-medium text-muted-foreground leading-tight">Business Intelligence</span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -88,7 +100,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navMain} />
         <NavSessions sessions={sessions} onNewSession={handleNewSession} />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="gap-2 p-4">
+        <div className="flex items-center justify-between px-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Settings</p>
+          <ThemeToggle />
+        </div>
         <NavUser user={userData} />
       </SidebarFooter>
     </Sidebar>
