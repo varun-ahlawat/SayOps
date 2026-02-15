@@ -1,81 +1,133 @@
-// Shared types matching BigQuery schema (sayops dataset)
+// Shared types matching Supabase schema (zl-backend)
 
-export interface User {
+export interface Organization {
   id: string
-  business_name: string
-  email: string
+  name: string
+  owner_user_id: string
+  subscription_tier: 'free' | 'pro' | 'enterprise'
   created_at: string
+  updated_at: string
+}
+
+export interface OrgMember {
+  id: string
+  organization_id: string
+  firebase_uid: string
+  email: string
+  display_name: string | null
+  role: 'owner' | 'admin' | 'member'
+  is_active: boolean
+  joined_at: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Agent {
   id: string
-  user_id: string
+  organization_id: string
+  created_by: string
   name: string
-  status: "active" | "inactive"
-  created_at: string
-  total_calls: number
-  token_usage: number
-  money_spent: number
-  max_call_time: number
-  context: string
-  cellular_enabled: boolean
+  description: string | null
+  system_prompt: string
+  custom_instructions: string | null
+  personality: string | null
+  escalation_rules: string | null
+  knowledge_base: string | null
+  capabilities: string[]
+  model: string
+  max_steps: number
+  is_active: boolean
   phone_number: string | null
+  created_at: string
+  updated_at: string
 }
 
-export interface CallHistoryEntry {
+export interface Conversation {
   id: string
+  organization_id: string
   agent_id: string
-  timestamp: string
-  duration_seconds: number
-  summary: string
-  caller_phone?: string
+  customer_id: string | null
+  member_id: string | null
+  channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram'
+  status: 'active' | 'idle' | 'completed' | 'archived'
+  started_at: string
+  last_message_at: string | null
+  metadata: Record<string, any>
+  created_at: string
+  updated_at: string
 }
 
-export interface ConversationTurn {
+export interface Message {
   id: string
-  call_id: string
-  turn_order: number
-  speaker: "User" | "Agent"
-  text: string
-  audio_url: string | null
+  conversation_id: string
+  execution_id: string | null
+  role: 'user' | 'assistant' | 'tool'
+  content: string | null
+  tool_calls: any[] | null
+  tool_name: string | null
+  tool_result: any | null
+  created_at: string
 }
 
-export interface DailyCallStat {
-  date: string
+export interface AgentExecution {
+  id: string
+  session_id: string
+  user_id: string
   agent_id: string
-  call_count: number
+  agent_name: string
+  customer_id: string | null
+  organization_id: string
+  conversation_id: string | null
+  started_at: string
+  completed_at: string
+  step_count: number
+  tool_calls: any[]
+  output_preview: string | null
+  messages: any[] | null
+  created_at: string
 }
 
-// Uploaded documents table for vector search
 export interface UserDocument {
   id: string
   user_id: string
-  agent_id: string
+  agent_id: string | null
   file_name: string
   file_type: string
   file_size_bytes: number
-  raw_text: string | null
-  embedding: number[] | null
+  raw_text: string
   uploaded_at: string
-  ocr_status: "pending" | "processing" | "completed" | "skipped" | "failed"
+  ocr_status: 'not_applicable' | 'pending' | 'processing' | 'completed' | 'failed'
+  storage_path: string | null
+  created_at: string
+  updated_at: string
 }
 
-// Frontend-friendly types (camelCase, with nested data)
+// Frontend-friendly types (with nested data)
 
-export interface AgentWithCalls extends Agent {
-  calls?: CallHistoryEntryWithTurns[]
+export interface AgentWithConversations extends Agent {
+  conversations?: ConversationWithMessages[]
 }
 
-export interface CallHistoryEntryWithTurns extends CallHistoryEntry {
-  conversation: ConversationTurn[]
+export interface ConversationWithMessages extends Conversation {
+  messages: Message[]
 }
 
 export interface DashboardStats {
   total_calls: number
   calls_today: number
-  total_tokens: number
-  total_money_spent: number
-  calls_per_day: { date: string; [agentName: string]: string | number }[]
-  weekly_calls: number
-  monthly_calls: number
+  active_agents: number
+  total_messages: number
+  messages_per_day: { date: string; [agentName: string]: string | number }[]
+  weekly_stats: {
+    calls: number
+    messages: number
+  }
+}
+
+// Chat interface
+export interface ChatResponse {
+  output: string
+  sessionID: string
+  steps: number
+  toolCalls: { name: string; args: any }[]
 }

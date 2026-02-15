@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { IconDashboard } from "@tabler/icons-react"
+import { IconDashboard, IconMessageChatbot, IconHistory, IconFileUpload } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { NavDocuments } from "@/components/nav-documents"
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +22,21 @@ const navMain = [
     title: "Dashboard",
     url: "/dashboard",
     icon: IconDashboard,
+  },
+  {
+    title: "Business Assistant",
+    url: "/assistant",
+    icon: IconMessageChatbot,
+  },
+  {
+    title: "Call History",
+    url: "/history",
+    icon: IconHistory,
+  },
+  {
+    title: "Knowledge Base",
+    url: "/documents",
+    icon: IconFileUpload,
   },
 ]
 

@@ -188,11 +188,15 @@ export default function CreateAgentPage() {
     try {
       const agent = await createAgent({
         name: businessName.trim(),
-        website_url: websiteUrl ? `https://${websiteUrl}` : undefined,
+        capabilities: ["document_search", "memory"], // Default capabilities
+        system_prompt: `You are a friendly, professional AI phone assistant for ${businessName}. Your job is to help callers with their questions and requests.`,
       })
 
       if (files.length > 0) {
-        await uploadFiles(agent.id, files)
+        // Sequentially upload files to the new backend
+        for (const file of files) {
+          await uploadFiles([file])
+        }
       }
 
       setCreatedAgent(agent)

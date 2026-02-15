@@ -205,15 +205,17 @@ const LANGUAGE_OPTIONS = [
   { id: "hi", label: "Hindi" },
 ]
 
-const PREDEFINED_ACTIONS = [
-  { id: "book_appointments", label: "Book Appointments" },
-  { id: "process_refunds", label: "Process Refunds" },
-  { id: "take_orders", label: "Take Orders" },
-  { id: "transfer_calls", label: "Transfer Calls" },
-  { id: "collect_info", label: "Collect Customer Info" },
-  { id: "send_followup", label: "Send Follow-up Email" },
-  { id: "check_inventory", label: "Check Inventory" },
-  { id: "provide_quotes", label: "Provide Quotes" },
+const CAPABILITIES = [
+  { id: "database_query", label: "Database Query", description: "Query your business database" },
+  { id: "document_search", label: "Document Search", description: "Search through uploaded files" },
+  { id: "memory", label: "Agent Memory", description: "Remember business-wide context" },
+  { id: "customer_memory", label: "Customer Memory", description: "Remember specific customer details" },
+  { id: "calendar_read", label: "View Calendar", description: "Check availability and events" },
+  { id: "calendar_manage", label: "Manage Calendar", description: "Book and update appointments" },
+  { id: "email_read", label: "Read Emails", description: "Search and read messages" },
+  { id: "email_send", label: "Send Emails", description: "Send follow-ups and info" },
+  { id: "sms_send", label: "Send SMS", description: "Send text messages to callers" },
+  { id: "instagram_send", label: "Instagram DM", description: "Message customers on Instagram" },
 ]
 
 function detectRole(context: string): string {
@@ -277,44 +279,26 @@ function IntegrationsSection() {
 }
 
 export function AgentSettings({ agent }: { agent: Agent }) {
-  const [context, setContext] = React.useState(agent.context)
-  const [maxCallTime, setMaxCallTime] = React.useState(String(agent.max_call_time))
-  const [cellularEnabled, setCellularEnabled] = React.useState(agent.cellular_enabled)
+  const [systemPrompt, setSystemPrompt] = React.useState(agent.system_prompt || "")
+  const [personality, setPersonality] = React.useState(agent.personality || "professional")
+  const [capabilities, setCapabilities] = React.useState<string[]>(agent.capabilities || [])
+  const [escalationRules, setEscalationRules] = React.useState(agent.escalation_rules || "")
+  const [knowledgeBase, setKnowledgeBase] = React.useState(agent.knowledge_base || "")
+  const [maxCallTime, setMaxCallTime] = React.useState(String(agent.max_call_time || 300))
+  const [isActive, setIsActive] = React.useState(agent.is_active)
   const [saving, setSaving] = React.useState(false)
-
-  // Advanced settings (demo-only, local state)
-  const [selectedRole, setSelectedRole] = React.useState(() => detectRole(agent.context))
-  const [greeting, setGreeting] = React.useState("Hello! How can I help you today?")
-  const [tone, setTone] = React.useState("professional")
-  const [language, setLanguage] = React.useState("en")
-  const [escalationInstructions, setEscalationInstructions] = React.useState("")
-  const [businessHoursEnabled, setBusinessHoursEnabled] = React.useState(false)
-  const [businessHoursStart, setBusinessHoursStart] = React.useState("09:00")
-  const [businessHoursEnd, setBusinessHoursEnd] = React.useState("17:00")
-  const [selectedActions, setSelectedActions] = React.useState<string[]>([])
-  const [customActions, setCustomActions] = React.useState("")
-
-  const handleRoleSelect = (roleId: string) => {
-    setSelectedRole(roleId)
-    const preset = ROLE_PRESETS.find((r) => r.id === roleId)
-    if (preset && preset.id !== "custom") {
-      setContext(preset.context)
-    }
-  }
-
-  const toggleAction = (actionId: string) => {
-    setSelectedActions((prev) =>
-      prev.includes(actionId) ? prev.filter((a) => a !== actionId) : [...prev, actionId]
-    )
-  }
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await updateAgent(agent.id, {
-        context,
+        system_prompt: systemPrompt,
+        personality,
+        capabilities,
+        escalation_rules: escalationRules,
+        knowledge_base: knowledgeBase,
         max_call_time: Number(maxCallTime),
-        cellular_enabled: cellularEnabled,
+        is_active: isActive,
       })
       toast.success("Settings saved successfully")
     } catch (err: any) {
@@ -322,6 +306,12 @@ export function AgentSettings({ agent }: { agent: Agent }) {
     } finally {
       setSaving(false)
     }
+  }
+
+  const toggleCapability = (id: string) => {
+    setCapabilities(prev => 
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    )
   }
 
   return (
@@ -347,18 +337,15 @@ export function AgentSettings({ agent }: { agent: Agent }) {
                 </CardDescription>
               </div>
             </div>
-            <Badge variant={agent.status === "active" ? "default" : "secondary"}>
-              {agent.status}
+            <Badge variant={agent.is_active ? "default" : "secondary"}>
+              {agent.is_active ? "active" : "inactive"}
             </Badge>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Integrations — always visible */}
-      <IntegrationsSection />
-
       {/* Advanced Settings — collapsible */}
-      <Collapsible>
+      <Collapsible defaultOpen>
         <CollapsibleTrigger asChild>
           <button className="flex w-full items-center justify-between rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-accent">
             <span className="text-sm font-medium">Advanced Settings</span>
@@ -367,183 +354,112 @@ export function AgentSettings({ agent }: { agent: Agent }) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="flex flex-col gap-6 pt-4">
-            {/* Role Selection */}
+            {/* System Prompt */}
             <Card>
               <CardHeader>
-                <CardTitle>Agent Role</CardTitle>
+                <CardTitle>System Prompt</CardTitle>
                 <CardDescription>
-                  Choose a preset role or create a custom one.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {ROLE_PRESETS.map((role) => {
-                    const RoleIcon = role.icon
-                    const isSelected = selectedRole === role.id
-                    return (
-                      <button
-                        key={role.id}
-                        onClick={() => handleRoleSelect(role.id)}
-                        className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all hover:bg-accent ${
-                          isSelected
-                            ? "border-primary bg-primary/5 ring-1 ring-primary"
-                            : "border-border"
-                        }`}
-                      >
-                        <div className="flex w-full items-center justify-between">
-                          <RoleIcon className={`size-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                          {isSelected && <Badge variant="default" className="text-xs">Active</Badge>}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{role.label}</p>
-                          <p className="text-xs text-muted-foreground">{role.description}</p>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Context / Instructions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Agent Instructions</CardTitle>
-                <CardDescription>
-                  {selectedRole === "custom"
-                    ? "Write your own instructions for how the agent should behave."
-                    : "Auto-filled from the selected role. Edit to customize further."}
+                  Core instructions that define your agent's identity and behavior.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Textarea
-                  value={context}
-                  onChange={(e) => setContext(e.target.value)}
-                  rows={5}
-                  placeholder="Describe your agent's role, personality, and how it should handle different situations..."
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  rows={8}
+                  placeholder="e.g., You are a helpful sales assistant for BurkePros..."
                 />
               </CardContent>
             </Card>
 
-            {/* Greeting & Tone */}
+            {/* Personality & Tone */}
             <Card>
               <CardHeader>
-                <CardTitle>Greeting & Tone</CardTitle>
+                <CardTitle>Personality & Tone</CardTitle>
                 <CardDescription>
-                  Customize how your agent greets callers.
+                  Set the vibe for your agent's conversations.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="greeting">Greeting Message</Label>
-                    <Input
-                      id="greeting"
-                      value={greeting}
-                      onChange={(e) => setGreeting(e.target.value)}
-                      placeholder="Hello! How can I help you today?"
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex flex-col gap-2">
-                    <Label>Tone</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {TONE_OPTIONS.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => setTone(t.id)}
-                          className={`rounded-full border px-3 py-1 text-sm transition-all ${
-                            tone === t.id
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border hover:bg-accent"
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {TONE_OPTIONS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setPersonality(t.id)}
+                      className={`rounded-full border px-3 py-1 text-sm transition-all ${
+                        personality === t.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border hover:bg-accent"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Language */}
+            {/* Capabilities */}
             <Card>
               <CardHeader>
-                <CardTitle>Language</CardTitle>
+                <CardTitle>Capabilities</CardTitle>
                 <CardDescription>
-                  Set the primary language your agent uses.
+                  Enable tools and integrations for your agent.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGE_OPTIONS.map((lang) => (
-                      <SelectItem key={lang.id} value={lang.id}>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-
-            {/* Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Allowed Actions</CardTitle>
-                <CardDescription>
-                  Define what your agent is allowed to do during calls.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {PREDEFINED_ACTIONS.map((action) => (
-                      <div key={action.id} className="flex items-center gap-3">
-                        <Checkbox
-                          id={action.id}
-                          checked={selectedActions.includes(action.id)}
-                          onCheckedChange={() => toggleAction(action.id)}
-                        />
-                        <Label htmlFor={action.id} className="cursor-pointer text-sm">
-                          {action.label}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {CAPABILITIES.map((cap) => (
+                    <div key={cap.id} className="flex items-center gap-3 rounded-lg border p-3">
+                      <Checkbox
+                        id={cap.id}
+                        checked={capabilities.includes(cap.id)}
+                        onCheckedChange={() => toggleCapability(cap.id)}
+                      />
+                      <div className="flex flex-col gap-0.5 cursor-pointer" onClick={() => toggleCapability(cap.id)}>
+                        <Label htmlFor={cap.id} className="text-sm font-medium leading-none cursor-pointer">
+                          {cap.label}
                         </Label>
+                        <p className="text-xs text-muted-foreground">{cap.description}</p>
                       </div>
-                    ))}
-                  </div>
-                  <Separator />
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="custom-actions">Custom Actions</Label>
-                    <Textarea
-                      id="custom-actions"
-                      value={customActions}
-                      onChange={(e) => setCustomActions(e.target.value)}
-                      rows={3}
-                      placeholder="Describe any additional actions your agent can perform..."
-                    />
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Escalation */}
+            {/* Knowledge Base */}
             <Card>
               <CardHeader>
-                <CardTitle>Escalation Rules</CardTitle>
+                <CardTitle>Knowledge Base</CardTitle>
                 <CardDescription>
-                  When should the agent transfer to a human?
+                  Additional context and documents for the agent to reference.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Textarea
-                  value={escalationInstructions}
-                  onChange={(e) => setEscalationInstructions(e.target.value)}
+                  value={knowledgeBase}
+                  onChange={(e) => setKnowledgeBase(e.target.value)}
+                  rows={4}
+                  placeholder="Paste business details, FAQs, or pricing here..."
+                />
+              </CardContent>
+            </Card>
+
+            {/* Escalation Rules */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Escalation Rules</CardTitle>
+                <CardDescription>
+                  When should the agent transfer to a human or stop?
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={escalationRules}
+                  onChange={(e) => setEscalationRules(e.target.value)}
                   rows={3}
-                  placeholder="e.g., Transfer to a human if the customer asks to speak to a manager..."
+                  placeholder="e.g., If the customer asks for a manager, say you'll have one call them back."
                 />
               </CardContent>
             </Card>
@@ -629,27 +545,27 @@ export function AgentSettings({ agent }: { agent: Agent }) {
               </CardContent>
             </Card>
 
-            {/* Cellular Settings */}
+            {/* Status & Availability */}
             <Card>
               <CardHeader>
-                <CardTitle>Cellular Settings</CardTitle>
+                <CardTitle>Status & Availability</CardTitle>
                 <CardDescription>
-                  Configure phone connectivity for this agent.
+                  Enable or disable this agent.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="cellular-toggle">Enable Cellular Calls</Label>
+                      <Label htmlFor="active-toggle">Agent Active</Label>
                       <p className="text-sm text-muted-foreground">
-                        Allow this agent to receive calls via cellular network
+                        If disabled, the agent won't answer calls or messages.
                       </p>
                     </div>
                     <Switch
-                      id="cellular-toggle"
-                      checked={cellularEnabled}
-                      onCheckedChange={setCellularEnabled}
+                      id="active-toggle"
+                      checked={isActive}
+                      onCheckedChange={setIsActive}
                     />
                   </div>
                   <Separator />

@@ -118,8 +118,8 @@ function DashboardContent() {
                       </CardDescription>
                     </div>
                   </div>
-                  <Badge variant={selectedAgent.status === "active" ? "default" : "secondary"}>
-                    {selectedAgent.status}
+                  <Badge variant={selectedAgent.is_active ? "default" : "secondary"}>
+                    {selectedAgent.is_active ? "active" : "inactive"}
                   </Badge>
                 </div>
               </CardHeader>

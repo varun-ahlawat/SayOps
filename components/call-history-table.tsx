@@ -5,7 +5,6 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconPhone,
-  IconPlayerPlay,
   IconUser,
   IconRobot,
 } from "@tabler/icons-react"
@@ -30,23 +29,41 @@ import {
 } from "@/components/ui/table"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { CallHistoryEntryWithTurns } from "@/lib/types"
+import { fetchMessages, fetchRecordingUrl } from "@/lib/api-client"
+import { Message } from "@/lib/types"
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${String(secs).padStart(2, "0")}`
-}
 
-function CallRow({ call }: { call: CallHistoryEntryWithTurns }) {
+function CallRow({ call }: { call: any }) {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [messages, setMessages] = React.useState<Message[]>([])
+  const [recordingUrl, setRecordingUrl] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(false)
   const timestamp = new Date(call.timestamp)
+
+  const toggleOpen = async () => {
+    if (!isOpen && messages.length === 0) {
+      setLoading(true)
+      try {
+        const [msgs, url] = await Promise.all([
+          fetchMessages(call.id),
+          fetchRecordingUrl(call.id).catch(() => null)
+        ])
+        setMessages(msgs)
+        setRecordingUrl(url)
+      } catch (err) {
+        console.error("Failed to fetch call details:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    setIsOpen(!isOpen)
+  }
 
   return (
     <>
       <TableRow
         className="cursor-pointer hover:bg-muted/50"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
       >
         <TableCell>
           <Button variant="ghost" size="icon" className="size-6">
@@ -55,7 +72,6 @@ function CallRow({ call }: { call: CallHistoryEntryWithTurns }) {
             ) : (
               <IconChevronRight className="size-4" />
             )}
-            <span className="sr-only">Toggle details</span>
           </Button>
         </TableCell>
         <TableCell className="font-medium">
@@ -68,7 +84,7 @@ function CallRow({ call }: { call: CallHistoryEntryWithTurns }) {
           {format(timestamp, "h:mm a")}
         </TableCell>
         <TableCell>
-          <Badge variant="outline">{formatDuration(call.duration_seconds)}</Badge>
+          <Badge variant="outline">{call.caller_phone}</Badge>
         </TableCell>
         <TableCell className="max-w-[300px] truncate text-muted-foreground">
           {call.summary}
@@ -77,59 +93,69 @@ function CallRow({ call }: { call: CallHistoryEntryWithTurns }) {
       {isOpen && (
         <TableRow className="bg-muted/30 hover:bg-muted/30">
           <TableCell colSpan={5} className="p-0">
-            <div className="px-6 py-4">
-              <h4 className="mb-1 text-sm font-medium">Call Summary</h4>
-              <p className="mb-4 text-sm text-muted-foreground">
-                {call.summary}
-              </p>
-              <h4 className="mb-3 text-sm font-medium">Conversation</h4>
-              <div className="flex flex-col gap-3">
-                {(call.conversation || []).map((turn, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${
-                      turn.speaker === "Agent" ? "flex-row-reverse" : ""
-                    }`}
-                  >
-                    <div
-                      className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-                        turn.speaker === "User"
-                          ? "bg-muted"
-                          : "bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      {turn.speaker === "User" ? (
-                        <IconUser className="size-4" />
-                      ) : (
-                        <IconRobot className="size-4" />
-                      )}
+            <div className="px-6 py-6 space-y-6">
+              {/* Summary Section */}
+              <div className="flex flex-col gap-2">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Analysis</h4>
+                <div className="bg-background rounded-xl p-4 border shadow-sm">
+                  <p className="text-sm leading-relaxed">{call.summary}</p>
+                  {recordingUrl && (
+                    <div className="mt-4 pt-4 border-t flex items-center gap-4">
+                      <span className="text-xs font-medium text-muted-foreground">Call Recording:</span>
+                      <audio controls src={recordingUrl} className="h-8 w-full max-w-md" />
                     </div>
-                    <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2.5 ${
-                        turn.speaker === "User"
-                          ? "bg-muted"
-                          : "bg-primary/10"
-                      }`}
-                    >
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className="text-xs font-medium">
-                          {turn.speaker}
-                        </span>
-                        {turn.audio_url && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-5"
-                          >
-                            <IconPlayerPlay className="size-3" />
-                            <span className="sr-only">Play audio</span>
-                          </Button>
-                        )}
+                  )}
+                </div>
+              </div>
+
+              {/* Conversation Section */}
+              <div className="flex flex-col gap-4">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Transcript</h4>
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2">
+                  {loading ? (
+                    <p className="text-sm text-muted-foreground animate-pulse">Loading transcript...</p>
+                  ) : messages.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No transcript available.</p>
+                  ) : (
+                    messages.map((turn, index) => (
+                      <div
+                        key={index}
+                        className={`flex gap-3 ${
+                          turn.role === "assistant" ? "flex-row" : "flex-row-reverse"
+                        }`}
+                      >
+                        <div
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+                            turn.role === "user"
+                              ? "bg-muted"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          {turn.role === "user" ? (
+                            <IconUser className="size-4" />
+                          ) : (
+                            <IconRobot className="size-4" />
+                          )}
+                        </div>
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                            turn.role === "user"
+                              ? "bg-muted"
+                              : "bg-primary/10"
+                          }`}
+                        >
+                          {turn.content}
+                        </div>
                       </div>
-                      <p className="text-sm">{turn.text}</p>
-                    </div>
-                  </div>
-                ))}
+                    ))
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => window.location.href=`/assistant?ref=${call.id}`}>
+                  Consult Business Assistant about this call
+                </Button>
               </div>
             </div>
           </TableCell>

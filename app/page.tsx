@@ -6,7 +6,7 @@ import { useState } from "react"
 import { IconBrandGoogle } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { fetchAgents, createUser } from "@/lib/api-client"
+import { fetchAgents } from "@/lib/api-client"
 
 const Silk = dynamic(() => import("@/components/silk"), { ssr: false })
 
@@ -27,17 +27,7 @@ export default function LandingPage() {
     setError("")
 
     try {
-      const firebaseUser = await signInWithGoogle()
-
-      // Ensure user exists in BigQuery (first-time signup creates the record)
-      try {
-        await createUser(
-          firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
-          firebaseUser.email || ""
-        )
-      } catch {
-        // 409 = user already exists, that's fine
-      }
+      await signInWithGoogle()
 
       // Route based on whether they have agents
       const agents = await fetchAgents()

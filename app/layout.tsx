@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
+import { SuperAgentChat } from '@/components/super-agent-chat'
 import './globals.css'
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <AuthProvider>
           {children}
+          <SuperAgentChat />
         </AuthProvider>
         <Toaster />
         <Analytics />
