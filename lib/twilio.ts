@@ -54,8 +54,8 @@ export async function provisionPhoneNumber(agentId: string): Promise<string | nu
     const purchasedNumber = await twilioClient.incomingPhoneNumbers.create({
       phoneNumber: selectedNumber,
       friendlyName: `Agent ${agentId}`,
-      // Webhook URL for incoming calls (update with your Cloud Run URL)
-      voiceUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://sayops-app.run.app"}/api/twilio/voice/${agentId}`,
+      // Webhook URL for incoming calls - points to backend (zl-backend), not frontend
+      voiceUrl: `${process.env.NEXT_PUBLIC_BACKEND_URL || "https://evently-backend-176587398849.us-central1.run.app"}/twilio/voice`,
       voiceMethod: "POST",
     })
 
