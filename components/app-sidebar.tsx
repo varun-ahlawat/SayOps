@@ -1,12 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { IconDashboard, IconMessageChatbot, IconHistory, IconFileUpload } from "@tabler/icons-react"
+import { IconMessageChatbot, IconFileUpload, IconPlug } from "@tabler/icons-react"
 
-import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { NavDocuments } from "@/components/nav-documents"
-import { NavSessions } from "@/components/nav-sessions"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
@@ -18,55 +16,21 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
-import { fetchConversations, chatWithAgent } from "@/lib/api-client"
-import { Conversation } from "@/lib/types"
-import { useRouter } from "next/navigation"
+import { fetchAgents } from "@/lib/api-client"
+import { Agent } from "@/lib/types"
 import Link from "next/link"
-
-const navMain = [
-  {
-    title: "Overview",
-    url: "/dashboard",
-    icon: IconDashboard,
-  },
-  {
-    title: "Strategy Assistant",
-    url: "/assistant",
-    icon: IconMessageChatbot,
-  },
-  {
-    title: "Call History",
-    url: "/history",
-    icon: IconHistory,
-  },
-  {
-    title: "Knowledge Base",
-    url: "/documents",
-    icon: IconFileUpload,
-  },
-]
+import { NavAgents } from "@/components/sidebar/NavAgents"
+import { NavChatHistory } from "@/components/sidebar/NavChatHistory"
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
-  const router = useRouter()
-  const [sessions, setSessions] = React.useState<Conversation[]>([])
+  const [agents, setAgents] = React.useState<Agent[]>([])
 
   React.useEffect(() => {
     if (user) {
-      fetchConversations("super").then(convs => {
-        setSessions((convs ?? []).filter(c => c.member_id))
-      }).catch(console.error)
+      fetchAgents().then(setAgents).catch(console.error)
     }
   }, [user])
-
-  const handleNewSession = async () => {
-    try {
-      const res = await chatWithAgent("Let's start a new strategy session.", "super")
-      router.push(`/assistant/${res.sessionID}`)
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
   const userData = {
     name: user?.displayName || user?.email?.split("@")[0] || "User",
@@ -97,8 +61,30 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} />
-        <NavSessions sessions={sessions} onNewSession={handleNewSession} />
+        <NavAgents agents={agents} />
+        
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Knowledge Base">
+                <Link href="/documents">
+                  <IconFileUpload />
+                  <span>Business Documents</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Integrations">
+                <Link href="/integrations">
+                  <IconPlug />
+                  <span>Integrations</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <NavChatHistory />
       </SidebarContent>
       <SidebarFooter className="gap-2 p-4">
         <div className="flex items-center justify-between px-2">

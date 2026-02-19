@@ -1,16 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import React, { Suspense } from "react"
+import SignUpForm from "./SignUpForm"
 
-// Signup is now handled by Google OAuth on the landing page.
-// Redirect to login which has the same "Continue with Google" flow.
 export default function SignUpPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    router.replace("/login")
-  }, [router])
-
-  return null
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <SignUpForm />
+    </Suspense>
+  )
 }

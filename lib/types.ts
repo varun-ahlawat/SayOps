@@ -9,18 +9,27 @@ export interface Organization {
   updated_at: string
 }
 
+export interface OrgInvite {
+  id: string
+  organization_id: string
+  email: string
+  role: 'owner' | 'admin' | 'member'
+  token: string
+  expires_at: string
+  created_at: string
+  created_by: string
+}
+
 export interface OrgMember {
   id: string
   organization_id: string
-  firebase_uid: string
+  user_id: string
   email: string
-  display_name: string | null
   role: 'owner' | 'admin' | 'member'
-  is_active: boolean
-  joined_at: string
   created_at: string
   updated_at: string
 }
+
 
 export interface Agent {
   id: string
@@ -33,6 +42,8 @@ export interface Agent {
   personality: string | null
   escalation_rules: string | null
   knowledge_base: string | null
+  has_knowledge_base?: boolean
+  enabled_connectors?: string[]
   capabilities: string[]
   model: string
   max_steps: number
@@ -127,6 +138,7 @@ export interface DashboardStats {
 // Chat interface
 export interface ChatResponse {
   output: string
+  broadcast: string
   sessionID: string
   steps: number
   toolCalls: { name: string; args: any }[]

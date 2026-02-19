@@ -63,7 +63,7 @@ export function AgentChat() {
         ...prev,
         {
           role: "assistant",
-          content: res.output || "(empty response)",
+          content: res.broadcast || res.output || "(empty response)",
           toolCalls: res.toolCalls,
           steps: res.steps,
         },
