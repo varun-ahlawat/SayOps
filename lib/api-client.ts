@@ -52,9 +52,8 @@ export async function fetchCurrentUser(): Promise<{ user: OrgMember; organizatio
 }
 
 export async function fetchUser(): Promise<OrgMember> {
-  // In zl-backend, the user is auto-upserted on any authenticated request
-  // We can just call a simple endpoint to get the current member/org info
-  return apiFetch<OrgMember>("/agents").then(res => (res as any).member)
+  const res = await apiFetch<{ user: OrgMember; organization?: Organization }>("/user/me")
+  return res.user
 }
 
 export async function fetchOrgInvites(): Promise<OrgInvite[]> {
@@ -186,7 +185,7 @@ export async function fetchConversations(agentId?: string): Promise<Conversation
 }
 
 export async function fetchEvaConversations(): Promise<Conversation[]> {
-  const res = await apiFetch<{ conversations: Conversation[] }>("/eva/conversations")
+  const res = await apiFetch<{ conversations: Conversation[] }>("/conversations?agentId=super")
   return res.conversations ?? []
 }
 
