@@ -90,7 +90,7 @@ export default function CreateAgentPage() {
 
       if (files.length > 0) {
         for (const file of files) {
-          await uploadFiles([file])
+          await uploadFiles([file], agent.organization_id)
         }
       }
 
