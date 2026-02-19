@@ -32,3 +32,4 @@ GOVERNANCE.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+Dockerfile.dev

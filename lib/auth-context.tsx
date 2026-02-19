@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uid: 'dev-user',
         email: 'dev@evently.local',
         displayName: 'Dev User',
-        photoURL: 'https://avatar.vercel.sh/dev',
+        photoURL: null,
         getIdToken: async () => 'dev-token',
         reload: async () => {},
       } as any)

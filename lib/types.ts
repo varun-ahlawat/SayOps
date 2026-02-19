@@ -15,9 +15,10 @@ export interface OrgInvite {
   email: string
   role: 'owner' | 'admin' | 'member'
   token: string
+  invited_by: string
   expires_at: string
+  accepted_at: string | null
   created_at: string
-  created_by: string
 }
 
 export interface OrgMember {
@@ -25,7 +26,9 @@ export interface OrgMember {
   organization_id: string
   user_id: string
   email: string
+  display_name: string | null
   role: 'owner' | 'admin' | 'member'
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -45,8 +48,10 @@ export interface Agent {
   has_knowledge_base?: boolean
   enabled_connectors?: string[]
   capabilities: string[]
+  platforms?: string[]
   model: string
   max_steps: number
+  max_tokens: number | null
   is_active: boolean
   phone_number: string | null
   created_at: string
@@ -59,7 +64,7 @@ export interface Conversation {
   agent_id: string
   customer_id: string | null
   member_id: string | null
-  channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram'
+  channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram' | 'facebook' | 'whatsapp'
   status: 'active' | 'idle' | 'completed' | 'archived'
   started_at: string
   last_message_at: string | null
