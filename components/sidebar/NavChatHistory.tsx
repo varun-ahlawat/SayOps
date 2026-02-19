@@ -3,6 +3,7 @@
 import * as React from "react"
 import { IconMessage, IconClock, IconSearch } from "@tabler/icons-react"
 import Link from "next/link"
+import { fetchEvaConversations } from "@/lib/api-client"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -18,13 +19,35 @@ interface ChatSession {
   date: string
 }
 
-const RECENT_CHATS: ChatSession[] = [
-  { id: "1", title: "Support Strategy Q1", date: "Today" },
-  { id: "2", title: "Technical Onboarding", date: "Yesterday" },
-  { id: "3", title: "Billing Inquiry", date: "Last Week" },
-]
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return "Today"
+  if (diffDays === 1) return "Yesterday"
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
+}
 
 export function NavChatHistory() {
+  const [chats, setChats] = React.useState<ChatSession[]>([])
+
+  React.useEffect(() => {
+    fetchEvaConversations()
+      .then((conversations) => {
+        setChats(
+          conversations.slice(0, 5).map((c) => ({
+            id: c.id,
+            title: c.metadata?.summary || "Eva Chat",
+            date: formatRelativeDate(c.started_at),
+          }))
+        )
+      })
+      .catch(console.error)
+  }, [])
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel className="flex items-center justify-between">
@@ -35,7 +58,7 @@ export function NavChatHistory() {
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {RECENT_CHATS.map((chat) => (
+          {chats.map((chat) => (
             <SidebarMenuItem key={chat.id}>
               <SidebarMenuButton asChild>
                 <Link href={`/chat/${chat.id}`}>

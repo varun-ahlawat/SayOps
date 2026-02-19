@@ -4,12 +4,12 @@ import * as React from "react"
 import { IconMessageChatbot, IconFileUpload, IconPlug } from "@tabler/icons-react"
 
 import { NavUser } from "@/components/nav-user"
-import { NavDocuments } from "@/components/nav-documents"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,

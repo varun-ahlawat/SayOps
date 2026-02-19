@@ -6,7 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { useAuth } from "@/lib/auth-context"
-import { fetchDocuments, uploadFiles, fetchCurrentUser } from "@/lib/api-client"
+import { fetchDocuments, uploadFiles, fetchCurrentUser, deleteDocument } from "@/lib/api-client"
 import { UserDocument } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -77,6 +77,17 @@ export default function DocumentsPage() {
       setUploading(false)
       // Reset input
       e.target.value = ""
+    }
+  }
+
+  const handleDelete = async (docId: string) => {
+    if (!confirm("Are you sure you want to delete this document?")) return
+    try {
+      await deleteDocument(docId)
+      toast.success("Document deleted")
+      loadDocs()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete document")
     }
   }
 
@@ -164,7 +175,12 @@ export default function DocumentsPage() {
                       )}
                     </div>
                     
-                    <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                      onClick={() => handleDelete(doc.id)}
+                    >
                       <IconTrash className="size-4" />
                     </Button>
                   </CardContent>

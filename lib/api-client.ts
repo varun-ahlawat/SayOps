@@ -166,6 +166,17 @@ export async function fetchDocuments(): Promise<UserDocument[]> {
   return res.uploads
 }
 
+export async function deleteDocument(documentId: string): Promise<void> {
+  await apiFetch<{ status: string }>(`/upload/${documentId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function fetchOrgMembers(): Promise<OrgMember[]> {
+  const res = await apiFetch<OrgMember[]>("/org/members")
+  return res
+}
+
 // ---- Conversations & Messages ----
 
 export async function fetchConversations(agentId?: string): Promise<Conversation[]> {

@@ -75,7 +75,7 @@ export function useEvaChat() {
       
       const assistantMsg: EvaMessage = {
         role: 'assistant',
-        content: response.output,
+        content: response.broadcast || response.output,
         timestamp: Date.now(),
         toolCalls: response.toolCalls
       }

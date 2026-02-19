@@ -34,6 +34,7 @@ import {
   disconnectIntegration,
   createOrgInvite,
   fetchOrgInvites,
+  fetchOrgMembers,
   fetchUser
 } from "@/lib/api-client"
 import { OrgInvite, OrgMember } from "@/lib/types"
@@ -66,16 +67,14 @@ export default function SettingsForm() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [intData, inviteData] = await Promise.all([
+      const [intData, inviteData, memberData] = await Promise.all([
         fetchIntegrations(),
-        fetchOrgInvites()
+        fetchOrgInvites(),
+        fetchOrgMembers()
       ])
       setIntegrations(intData)
       setInvites(inviteData)
-      
-      // Fetch members (backend returns this in a list)
-      // For now, let's assume fetchUser or similar handles it
-      // In a real app, we'd have fetchOrgMembers()
+      setMembers(memberData)
     } catch (err) {
       toast.error("Failed to load organization settings")
     } finally {
@@ -274,6 +273,33 @@ export default function SettingsForm() {
                 </div>
               )}
             </div>
+
+            {members.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Active Members</h3>
+                  <div className="divide-y rounded-lg border">
+                    {members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <IconUsers className="size-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{member.email}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px]">
+                          Joined {new Date(member.created_at).toLocaleDateString()}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </section>

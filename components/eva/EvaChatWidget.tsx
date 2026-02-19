@@ -23,18 +23,16 @@ const MIN_HEIGHT = 400
 
 export function EvaChatWidget() {
   const router = useRouter()
-  const { 
-    isOpen, 
-    setIsOpen, 
-    size, 
-    resize, 
-    messages, 
-    addMessage,
+  const {
+    isOpen,
+    setIsOpen,
+    size,
+    resize,
+    messages,
     toggleOpen,
     sendMessage,
     isLoading,
     startNewChat,
-    maximize
   } = useEvaChat()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
