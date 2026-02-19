@@ -22,6 +22,10 @@ yarn-error.log*
 # deployment docs with potential secrets
 DEPLOYMENT_STATUS.md
 
+# architecture docs (internal only)
+ARCHITECTURE.md
+GOVERNANCE.md
+
 # vercel
 .vercel
 
