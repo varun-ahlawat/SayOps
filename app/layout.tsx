@@ -5,7 +5,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
 import { ThemeProvider } from '@/components/theme-provider'
-import { SuperAgentChat } from '@/components/super-agent-chat'
+import { PersistentEva } from '@/components/eva/PersistentEva'
 import './globals.css'
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
@@ -50,7 +50,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             {children}
-            <SuperAgentChat />
+            <PersistentEva />
           </AuthProvider>
         </ThemeProvider>
         <Toaster />

@@ -6,7 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { useAuth } from "@/lib/auth-context"
-import { fetchDocuments, uploadFiles } from "@/lib/api-client"
+import { fetchDocuments, uploadFiles, fetchCurrentUser } from "@/lib/api-client"
 import { UserDocument } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -25,6 +25,7 @@ export default function DocumentsPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [documents, setDocuments] = useState<UserDocument[]>([])
+  const [organizationId, setOrganizationId] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
@@ -45,7 +46,16 @@ export default function DocumentsPage() {
       router.push("/login")
       return
     }
+    
+    // Load documents and fetch organization info
     loadDocs()
+    
+    // Fetch organization info
+    fetchCurrentUser().then((data) => {
+      if (data.organization?.id) {
+        setOrganizationId(data.organization.id)
+      }
+    }).catch(console.error)
   }, [user, authLoading, router, loadDocs])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,10 +65,9 @@ export default function DocumentsPage() {
     const files = Array.from(e.target.files)
     
     try {
-      // In zl-backend, uploadFiles handles one file at a time or we can loop
-      // The current lib/api-client.ts uploadFiles takes File[] but sends only the first one
+      // Upload files with organizationId
       for (const file of files) {
-        await uploadFiles([file])
+        await uploadFiles([file], organizationId)
       }
       toast.success("Files uploaded successfully")
       loadDocs()

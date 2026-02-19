@@ -18,6 +18,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<FirebaseUser>
   signOut: () => Promise<void>
   getToken: () => Promise<string | null>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: 'Dev User',
         photoURL: 'https://avatar.vercel.sh/dev',
         getIdToken: async () => 'dev-token',
+        reload: async () => {},
       } as any)
       setLoading(false)
       return
@@ -61,9 +63,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user.getIdToken()
   }
 
+  const refreshUser = async () => {
+    if (user) {
+      if (process.env.NODE_ENV === 'development') return
+      await user.getIdToken(true)
+      await user.reload()
+      // Create shallow copy to trigger re-render if needed, though user object is mutable
+      setUser({ ...user } as FirebaseUser)
+    }
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, signInWithGoogle, signOut: signOutFn, getToken }}
+      value={{ user, loading, signInWithGoogle, signOut: signOutFn, getToken, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

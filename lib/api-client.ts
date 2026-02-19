@@ -7,7 +7,8 @@ import type {
   UserDocument,
   ChatResponse,
   OrgMember,
-  Organization
+  Organization,
+  OrgInvite
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -44,10 +45,34 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 // ---- User & Org ----
 
+export async function fetchCurrentUser(): Promise<{ user: OrgMember; organization?: Organization }> {
+  // Get current user info from backend
+  const res = await apiFetch<{ user: OrgMember; organization?: Organization }>("/user/me")
+  return res
+}
+
 export async function fetchUser(): Promise<OrgMember> {
   // In zl-backend, the user is auto-upserted on any authenticated request
   // We can just call a simple endpoint to get the current member/org info
-  return apiFetch<OrgMember>("/agents").then(res => (res as any).member) // Placeholder if needed, or update backend to have /user
+  return apiFetch<OrgMember>("/agents").then(res => (res as any).member)
+}
+
+export async function fetchOrgInvites(): Promise<OrgInvite[]> {
+  const res = await apiFetch<{ invites: OrgInvite[] }>("/org/invites")
+  return res.invites || []
+}
+
+export async function createOrgInvite(email: string, role: string = "member"): Promise<OrgInvite> {
+  return apiFetch<OrgInvite>("/org/invites", {
+    method: "POST",
+    body: JSON.stringify({ email, role }),
+  })
+}
+
+export async function deleteOrgInvite(inviteId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/org/invites/${inviteId}`, {
+    method: "DELETE",
+  })
 }
 
 // ---- Agents ----
@@ -70,6 +95,8 @@ export async function createAgent(data: {
   custom_instructions?: string;
   escalation_rules?: string;
   knowledge_base?: string;
+  enabled_connectors?: string[];
+  has_knowledge_base?: boolean;
 }): Promise<Agent> {
   return apiFetch<Agent>("/agents", {
     method: "POST",
@@ -105,15 +132,18 @@ export async function chatWithAgent(prompt: string, agentId?: string, customerId
 
 // ---- Documents / Upload ----
 
-export async function uploadFiles(files: File[]): Promise<{ status: string; uploadId: string; documentId: string }> {
+export async function uploadFiles(files: File[], organizationId?: string): Promise<{ status: string; uploadId: string; documentId: string }> {
   const headers = await getAuthHeaders()
   const formData = new FormData()
   
   // zl-backend expects a single 'file' field per request based on routes
-  // For multiple files, we'd need to loop or update backend. 
-  // Assuming single file for now or sequential uploads for compatibility.
   const file = files[0]
   formData.append("file", file)
+  
+  // Add organizationId if provided
+  if (organizationId) {
+    formData.append("organizationId", organizationId)
+  }
 
   const res = await fetch(`${BACKEND_URL}/api/upload`, {
     method: "POST",
@@ -144,6 +174,11 @@ export async function fetchConversations(agentId?: string): Promise<Conversation
   return res.conversations ?? []
 }
 
+export async function fetchEvaConversations(): Promise<Conversation[]> {
+  const res = await apiFetch<{ conversations: Conversation[] }>("/eva/conversations")
+  return res.conversations ?? []
+}
+
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
   const res = await apiFetch<{ messages: Message[] }>(`/conversations/${conversationId}/messages`)
   return res.messages
@@ -169,6 +204,39 @@ export async function fetchCalls(agentId: string): Promise<any[]> {
   } catch {
     return []
   }
+}
+
+// ---- Integrations ----
+
+export async function fetchIntegrations(): Promise<any[]> {
+  try {
+    const res = await apiFetch<{ integrations: any[] }>("/integrations")
+    return res.integrations || []
+  } catch (err) {
+    console.error("Failed to fetch integrations", err)
+    return []
+  }
+}
+
+export async function getGoogleConnectUrl(): Promise<string> {
+  const res = await apiFetch<{ url: string }>("/integrations/google/connect")
+  return res.url
+}
+
+export async function disconnectIntegration(provider: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/integrations/${provider}`, {
+    method: "DELETE",
+  })
+}
+
+export async function getInvite(token: string): Promise<any> {
+  return apiFetch<any>(`/org/invites/${token}`)
+}
+
+export async function acceptInvite(token: string): Promise<any> {
+  return apiFetch<any>(`/org/invites/${token}/accept`, {
+    method: "POST",
+  })
 }
 
 // ---- Stats (To be implemented in backend if missing) ----
