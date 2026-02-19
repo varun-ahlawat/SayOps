@@ -6,8 +6,8 @@ FROM base AS deps
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile
+COPY package.json bun.lock ./
+RUN bun install --frozen
 
 # Rebuild the source code only when needed
 FROM base AS builder
