@@ -157,7 +157,15 @@ export async function uploadFiles(files: File[], organizationId?: string): Promi
     const error = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(error.error || `Upload error: ${res.status}`)
   }
-  return res.json()
+
+  const result = await res.json()
+
+  // Backend returns HTTP 200 with status: 'failed' on processing errors
+  if (result.status === 'failed') {
+    throw new Error(result.error || 'Upload processing failed')
+  }
+
+  return result
 }
 
 export async function fetchDocuments(): Promise<UserDocument[]> {
