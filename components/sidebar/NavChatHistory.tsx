@@ -1,23 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { IconMessage, IconClock, IconSearch } from "@tabler/icons-react"
+import { IconMessage, IconClock, IconPlus } from "@tabler/icons-react"
 import Link from "next/link"
-import { fetchEvaConversations } from "@/lib/api-client"
 import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-
-interface ChatSession {
-  id: string
-  title: string
-  date: string
-}
+import { NavSection } from "./NavSection"
+import { useSidebarStore, useConversationsStore } from "@/stores"
+import { useAuth } from "@/lib/auth-context"
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -31,59 +24,79 @@ function formatRelativeDate(dateStr: string): string {
   return date.toLocaleDateString()
 }
 
-import { useAuth } from "@/lib/auth-context"
-
 export function NavChatHistory() {
   const { user } = useAuth()
-  const [chats, setChats] = React.useState<ChatSession[]>([])
+  const { sections } = useSidebarStore()
+  const { evaConversations, fetchEvaConversations, loading } = useConversationsStore()
+  const searchQuery = sections.evaChat?.searchQuery || ""
 
   React.useEffect(() => {
-    if (!user) return
+    if (user) {
+      fetchEvaConversations()
+    }
+  }, [user, fetchEvaConversations])
 
-    fetchEvaConversations()
-      .then((conversations) => {
-        setChats(
-          conversations.slice(0, 5).map((c) => ({
-            id: c.id,
-            title: c.metadata?.summary || "Eva Chat",
-            date: formatRelativeDate(c.started_at),
-          }))
-        )
-      })
-      .catch(console.error)
-  }, [user?.uid])
+  const filteredConversations = React.useMemo(() => {
+    if (!searchQuery) return evaConversations
+    return evaConversations.filter((c) =>
+      (c.metadata?.summary || "Eva Chat").toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [evaConversations, searchQuery])
+
+  const displayConversations = filteredConversations.slice(0, 5)
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel className="flex items-center justify-between">
-        History
-        <Link href="/history" className="text-muted-foreground hover:text-foreground">
-          <IconSearch className="size-3.5" />
+    <NavSection
+      id="evaChat"
+      title="Eva Chats"
+      icon={<IconMessage className="size-4" />}
+      showSearch
+      searchPlaceholder="Search chats..."
+      headerAction={
+        <Link
+          href="/chat/new"
+          className="text-muted-foreground hover:text-foreground"
+          title="New Chat"
+        >
+          <IconPlus className="size-4" />
         </Link>
-      </SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {chats.map((chat) => (
+      }
+    >
+      <SidebarMenu>
+        {loading ? (
+          <SidebarMenuItem>
+            <span className="text-xs text-muted-foreground px-2">Loading...</span>
+          </SidebarMenuItem>
+        ) : displayConversations.length > 0 ? (
+          displayConversations.map((chat) => (
             <SidebarMenuItem key={chat.id}>
               <SidebarMenuButton asChild>
                 <Link href={`/chat/${chat.id}`}>
-                  <IconMessage className="text-muted-foreground" />
-                  <span className="truncate">{chat.title}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{chat.date}</span>
+                  <IconMessage className="size-4 text-muted-foreground" />
+                  <span className="truncate flex-1">
+                    {chat.metadata?.summary || "Eva Chat"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {formatRelativeDate(chat.started_at)}
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          ))}
+          ))
+        ) : (
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-muted-foreground">
-              <Link href="/history">
-                <IconClock className="size-3.5" />
-                <span>View All History</span>
-              </Link>
-            </SidebarMenuButton>
+            <span className="text-xs text-muted-foreground px-2">No chats yet</span>
           </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+        )}
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild className="text-muted-foreground">
+            <Link href="/chat/new">
+              <IconPlus className="size-4" />
+              <span>New Chat</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </NavSection>
   )
 }
