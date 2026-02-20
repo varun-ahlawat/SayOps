@@ -31,10 +31,15 @@ function formatRelativeDate(dateStr: string): string {
   return date.toLocaleDateString()
 }
 
+import { useAuth } from "@/lib/auth-context"
+
 export function NavChatHistory() {
+  const { user } = useAuth()
   const [chats, setChats] = React.useState<ChatSession[]>([])
 
   React.useEffect(() => {
+    if (!user) return
+
     fetchEvaConversations()
       .then((conversations) => {
         setChats(
@@ -46,7 +51,7 @@ export function NavChatHistory() {
         )
       })
       .catch(console.error)
-  }, [])
+  }, [user?.uid])
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">

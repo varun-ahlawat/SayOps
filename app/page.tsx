@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { IconBrandGoogle } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -16,10 +16,11 @@ export default function LandingPage() {
   const [error, setError] = useState("")
 
   // If already authed, redirect to dashboard
-  if (!loading && user) {
-    router.push("/dashboard")
-    return null
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/dashboard")
+    }
+  }, [loading, user, router])
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true)
@@ -94,11 +95,11 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-16 flex items-center gap-8 text-sm text-primary-foreground/50">
-            <span>No credit card required</span>
+            <span>5 minutes setup</span>
             <span className="hidden size-1 rounded-full bg-primary-foreground/30 sm:block" />
-            <span className="hidden sm:inline">Free for 14 days</span>
+            <span className="hidden sm:inline">Free for 3 months</span>
             <span className="hidden size-1 rounded-full bg-primary-foreground/30 sm:block" />
-            <span className="hidden sm:inline">Cancel anytime</span>
+            <span className="hidden sm:inline">Customer Support that actually "just works"</span>
           </div>
         </main>
       </div>
