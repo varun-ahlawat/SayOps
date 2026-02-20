@@ -118,13 +118,14 @@ export async function deleteAgent(agentId: string): Promise<{ success: boolean }
 
 // ---- Chat / Interaction ----
 
-export async function chatWithAgent(prompt: string, agentId?: string, customerId?: string): Promise<ChatResponse> {
+export async function chatWithAgent(prompt: string, agentId?: string, customerId?: string, conversationId?: string): Promise<ChatResponse> {
   return apiFetch<ChatResponse>("/agent", {
     method: "POST",
     body: JSON.stringify({ 
       prompt, 
       agent: agentId, 
-      customer_id: customerId 
+      customer_id: customerId,
+      conversation_id: conversationId
     }),
   })
 }
@@ -186,8 +187,14 @@ export async function fetchOrgMembers(): Promise<OrgMember[]> {
 
 // ---- Conversations & Messages ----
 
-export async function fetchConversations(agentId?: string): Promise<Conversation[]> {
-  const endpoint = agentId ? `/conversations?agentId=${agentId}` : "/conversations"
+export async function fetchConversations(agentId?: string, scope?: 'me'): Promise<Conversation[]> {
+  const params = new URLSearchParams()
+  if (agentId) params.append('agentId', agentId)
+  if (scope) params.append('scope', scope)
+  
+  const queryString = params.toString()
+  const endpoint = queryString ? `/conversations?${queryString}` : "/conversations"
+  
   const res = await apiFetch<{ conversations: Conversation[] }>(endpoint)
   return res.conversations ?? []
 }
@@ -205,6 +212,19 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
 export async function fetchRecordingUrl(conversationId: string): Promise<string> {
   const res = await apiFetch<{ url: string }>(`/conversations/${conversationId}/recording`)
   return res.url
+}
+
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/conversations/${conversationId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function updateConversationStatus(conversationId: string, status: 'active' | 'idle' | 'completed' | 'archived'): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/conversations/${conversationId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  })
 }
 
 export async function fetchCalls(agentId: string): Promise<any[]> {
