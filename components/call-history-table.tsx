@@ -87,7 +87,9 @@ function CallRow({ call }: { call: any }) {
           <Badge variant="outline">{call.caller_phone}</Badge>
         </TableCell>
         <TableCell className="max-w-[300px] truncate text-muted-foreground">
-          {call.summary}
+          {typeof call.summary === 'object' && call.summary !== null
+            ? (call.summary.summary || JSON.stringify(call.summary))
+            : call.summary}
         </TableCell>
       </TableRow>
       {isOpen && (
@@ -98,7 +100,11 @@ function CallRow({ call }: { call: any }) {
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Analysis</h4>
                 <div className="bg-background rounded-xl p-4 border shadow-sm">
-                  <p className="text-sm leading-relaxed">{call.summary}</p>
+                  <p className="text-sm leading-relaxed">
+                    {typeof call.summary === 'object' && call.summary !== null
+                      ? (call.summary.summary || JSON.stringify(call.summary))
+                      : call.summary}
+                  </p>
                   {recordingUrl && (
                     <div className="mt-4 pt-4 border-t flex items-center gap-4">
                       <span className="text-xs font-medium text-muted-foreground">Call Recording:</span>

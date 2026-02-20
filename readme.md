@@ -15,40 +15,54 @@ AI-powered customer representatives platform. Create intelligent agents that han
 
 - Node.js 18+ (Node.js 20+ recommended)
 - npm or pnpm
+- **Docker** (Recommended for development)
 
-### Fork and Clone
+### Quick Start (Docker)
 
-1. Fork this repository by clicking the "Fork" button at the top right of the GitHub page
+**Option A: Full Stack (Recommended)**
+Go to the `zl-backend` repository and run `docker compose up`. This orchestrates both Frontend and Backend with hot reloading.
 
-2. Clone your forked repository:
+**Option B: Frontend Only (Standalone)**
+Run the frontend in isolation. It will try to connect to a backend at `http://localhost:3001` (host machine).
+
+```bash
+# Run with Hot Reloading
+docker compose up
+
+# Run Production Image (Pre-Push Check)
+docker compose -f docker-compose.test.yml up
+```
+
+### Manual Setup (No Docker)
+
+1. Fork and Clone
    ```bash
    git clone https://github.com/YOUR_USERNAME/SpeakOps.git
    cd SpeakOps
    ```
 
-### Install Dependencies
+2. Install Dependencies
+   ```bash
+   # We use Bun now!
+   bun install
+   ```
 
-```bash
-npm install
-```
+3. Run the Development Server
+   ```bash
+   bun run dev
+   ```
 
-### Run the Development Server
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the app.
-
-### Build for Production
-
-```bash
-npm run build
-npm run start
-```
+4. Build for Production
+   ```bash
+   bun run build
+   bun start
+   ```
 
 ## Tech Stack
 
+- **Runtime:** Bun
 - **Framework:** Next.js 15 with App Router
 - **UI:** React 19, Tailwind CSS, shadcn/ui
 - **Charts:** Recharts
