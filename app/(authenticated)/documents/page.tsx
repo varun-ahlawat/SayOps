@@ -1,22 +1,29 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { fetchDocuments, uploadFiles, fetchCurrentUser, deleteDocument } from "@/lib/api-client"
 import { UserDocument } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { 
-  IconFileUpload, 
-  IconFile, 
-  IconTrash, 
-  IconLoader2, 
+import {
+  IconFileUpload,
+  IconFile,
+  IconTrash,
+  IconLoader2,
   IconPlus,
   IconCheck,
   IconAlertCircle
 } from "@tabler/icons-react"
 import { toast } from "sonner"
+
+interface UploadItem {
+  id: string
+  fileName: string
+  status: "queued" | "uploading" | "done" | "error"
+  error?: string
+}
 
 export default function DocumentsPage() {
   const router = useRouter()
@@ -24,7 +31,9 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<UserDocument[]>([])
   const [organizationId, setOrganizationId] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
+  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([])
+  const processingRef = useRef(false)
+  const queueRef = useRef<UploadItem[]>([])
 
   const loadDocs = useCallback(async () => {
     try {
@@ -43,10 +52,10 @@ export default function DocumentsPage() {
       router.push("/login")
       return
     }
-    
+
     // Load documents and fetch organization info
     loadDocs()
-    
+
     // Fetch organization info
     fetchCurrentUser().then((data) => {
       if (data.organization?.id) {
@@ -55,26 +64,66 @@ export default function DocumentsPage() {
     }).catch(console.error)
   }, [user, authLoading, router, loadDocs])
 
+  const fileMapRef = useRef<Map<string, File>>(new Map())
+
+  const processQueue = useCallback(async (files: File[]) => {
+    const newItems: UploadItem[] = files.map((file, i) => {
+      const id = `${Date.now()}-${i}-${file.name}`
+      fileMapRef.current.set(id, file)
+      return { id, fileName: file.name, status: "queued" as const }
+    })
+    queueRef.current = [...queueRef.current, ...newItems]
+    setUploadQueue([...queueRef.current])
+
+    if (processingRef.current) return
+    processingRef.current = true
+
+    while (queueRef.current.some(i => i.status === "queued")) {
+      const next = queueRef.current.find(i => i.status === "queued")
+      if (!next) break
+
+      queueRef.current = queueRef.current.map(i =>
+        i.id === next.id ? { ...i, status: "uploading" as const } : i
+      )
+      setUploadQueue([...queueRef.current])
+
+      const file = fileMapRef.current.get(next.id)
+      if (!file) continue
+
+      try {
+        await uploadFiles([file], organizationId)
+        queueRef.current = queueRef.current.map(i =>
+          i.id === next.id ? { ...i, status: "done" as const } : i
+        )
+      } catch (err: any) {
+        queueRef.current = queueRef.current.map(i =>
+          i.id === next.id ? { ...i, status: "error" as const, error: err.message } : i
+        )
+        toast.error(`Failed to upload ${next.fileName}: ${err.message}`)
+      }
+      setUploadQueue([...queueRef.current])
+      fileMapRef.current.delete(next.id)
+    }
+
+    processingRef.current = false
+    const doneCount = queueRef.current.filter(i => i.status === "done").length
+    const errorCount = queueRef.current.filter(i => i.status === "error").length
+    if (doneCount > 0) {
+      toast.success(`${doneCount} file${doneCount > 1 ? "s" : ""} uploaded${errorCount > 0 ? ` (${errorCount} failed)` : ""}`)
+    }
+    // Clear completed items after a delay
+    setTimeout(() => {
+      queueRef.current = queueRef.current.filter(i => i.status !== "done")
+      setUploadQueue([...queueRef.current])
+    }, 3000)
+    loadDocs()
+  }, [organizationId, loadDocs])
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return
-    
-    setUploading(true)
     const files = Array.from(e.target.files)
-    
-    try {
-      // Upload files with organizationId
-      for (const file of files) {
-        await uploadFiles([file], organizationId)
-      }
-      toast.success("Files uploaded successfully")
-      loadDocs()
-    } catch (err: any) {
-      toast.error(err.message || "Failed to upload files")
-    } finally {
-      setUploading(false)
-      // Reset input
-      e.target.value = ""
-    }
+    e.target.value = ""
+    processQueue(files)
   }
 
   const handleDelete = async (docId: string) => {
@@ -108,16 +157,30 @@ export default function DocumentsPage() {
             multiple
             accept=".pdf,.txt,.doc,.docx"
             onChange={handleFileUpload}
-            disabled={uploading}
           />
-          <Button asChild disabled={uploading}>
+          <Button asChild>
             <label htmlFor="file-upload" className="cursor-pointer gap-2">
-              {uploading ? <IconLoader2 className="size-4 animate-spin" /> : <IconPlus className="size-4" />}
-              {uploading ? "Uploading..." : "Add Documents"}
+              <IconPlus className="size-4" />
+              Add Documents
             </label>
           </Button>
         </div>
       </div>
+
+      {uploadQueue.length > 0 && (
+        <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload Queue</p>
+          {uploadQueue.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 text-sm">
+              {item.status === "uploading" && <IconLoader2 className="size-4 animate-spin text-primary" />}
+              {item.status === "queued" && <IconFile className="size-4 text-muted-foreground" />}
+              {item.status === "done" && <IconCheck className="size-4 text-green-600" />}
+              {item.status === "error" && <IconAlertCircle className="size-4 text-red-600" />}
+              <span className={item.status === "error" ? "text-red-600" : ""}>{item.fileName}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {documents.length === 0 ? (

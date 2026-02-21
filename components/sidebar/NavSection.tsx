@@ -39,10 +39,12 @@ export function NavSection({
   children,
   className,
 }: NavSectionProps) {
-  const { sections, setSectionOpen, setSectionSearch, toggleSection } = useSidebarStore()
+  const { sections, setSectionOpen, setSectionSearch } = useSidebarStore()
   const sectionState = sections[id] || { isOpen: defaultOpen, searchQuery: '' }
   const isOpen = sectionState.isOpen
   const searchQuery = sectionState.searchQuery
+  const [searchVisible, setSearchVisible] = React.useState(false)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
     if (sections[id] === undefined) {
@@ -56,6 +58,17 @@ export function NavSection({
 
   const clearSearch = () => {
     setSectionSearch(id, '')
+    setSearchVisible(false)
+  }
+
+  const toggleSearch = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (searchVisible) {
+      clearSearch()
+    } else {
+      setSearchVisible(true)
+      setTimeout(() => searchInputRef.current?.focus(), 50)
+    }
   }
 
   return (
@@ -69,6 +82,15 @@ export function NavSection({
           <CollapsibleTrigger className="flex items-center w-full gap-2">
             {icon && <span className="shrink-0">{icon}</span>}
             <span className="flex-1 text-left">{title}</span>
+            {showSearch && (
+              <button
+                className="mr-0.5 text-muted-foreground hover:text-foreground"
+                onClick={toggleSearch}
+                title="Search"
+              >
+                <IconSearch className="size-3.5" />
+              </button>
+            )}
             {headerAction && (
               <span
                 className="mr-1"
@@ -87,28 +109,27 @@ export function NavSection({
         </SidebarGroupLabel>
 
         <CollapsibleContent>
-          {showSearch && (
+          {showSearch && searchVisible && (
             <div className="px-2 mb-2">
               <div className="relative">
                 <IconSearch className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   value={searchQuery}
                   onChange={handleSearchChange}
                   placeholder={searchPlaceholder}
                   className="h-7 pl-7 pr-7 text-xs bg-muted/50"
                   onClick={(e) => e.stopPropagation()}
                 />
-                {searchQuery && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      clearSearch()
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <IconX className="size-3.5" />
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    clearSearch()
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <IconX className="size-3.5" />
+                </button>
               </div>
             </div>
           )}

@@ -50,6 +50,8 @@ export default function SettingsForm() {
   const [isInviting, setIsInviting] = React.useState(false)
 
   const googleConnected = searchParams.get("google_connected")
+  const gmailConnected = searchParams.get("gmail_connected")
+  const hubspotConnected = searchParams.get("hubspot_connected")
   const error = searchParams.get("error")
 
   React.useEffect(() => {
@@ -57,12 +59,20 @@ export default function SettingsForm() {
       toast.success("Google Calendar connected successfully!")
       router.replace("/settings")
     }
+    if (gmailConnected) {
+      toast.success("Gmail connected successfully!")
+      router.replace("/settings")
+    }
+    if (hubspotConnected) {
+      toast.success("HubSpot connected successfully!")
+      router.replace("/settings")
+    }
     if (error) {
       toast.error(`Integration failed: ${error}`)
       router.replace("/settings")
     }
     loadData()
-  }, [googleConnected, error, router])
+  }, [googleConnected, gmailConnected, hubspotConnected, error, router])
 
   const loadData = async () => {
     try {

@@ -11,6 +11,7 @@ interface ConversationsState {
   error: string | null
   lastFetched: number | null
   fetchEvaConversations: () => Promise<void>
+  invalidateAndRefetch: () => Promise<void>
   fetchMessages: (conversationId: string) => Promise<void>
   addMessage: (conversationId: string, message: Message) => void
   clearMessages: (conversationId: string) => void
@@ -41,6 +42,12 @@ export const useConversationsStore = create<ConversationsState>()(
         } catch (err) {
           set({ error: (err as Error).message, loading: false })
         }
+      },
+
+      invalidateAndRefetch: async () => {
+        set({ lastFetched: null })
+        const conversations = await fetchEvaConversations()
+        set({ evaConversations: conversations, lastFetched: Date.now() })
       },
 
       fetchMessages: async (conversationId: string) => {

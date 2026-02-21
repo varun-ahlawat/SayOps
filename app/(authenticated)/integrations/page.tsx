@@ -45,7 +45,7 @@ export default function IntegrationsPage() {
   const handleConnect = async (provider: string) => {
     if (provider === "google" || provider === "gmail") {
       try {
-        const url = await getGoogleConnectUrl()
+        const url = await getGoogleConnectUrl(provider as 'google' | 'gmail')
         window.location.href = url
       } catch (err) {
         toast({

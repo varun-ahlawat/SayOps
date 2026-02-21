@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconMessageChatbot, IconGripVertical } from "@tabler/icons-react"
+import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from "@tabler/icons-react"
 import { NavUser } from "@/components/nav-user"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -20,13 +20,12 @@ import { NavChatHistory } from "@/components/sidebar/NavChatHistory"
 import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
 import { NavDocuments } from "@/components/sidebar/NavDocuments"
 import { NavCallHistory } from "@/components/sidebar/NavCallHistory"
-import { useSidebarStore, useAgentsStore, MIN_WIDTH, MAX_WIDTH } from "@/stores"
-import { cn } from "@/lib/utils"
+import { useSidebarStore, useAgentsStore } from "@/stores"
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
-  const { width, setWidth, isCollapsed } = useSidebarStore()
+  const { width, setWidth, isCollapsed, toggleCollapsed } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
 
   React.useEffect(() => {
@@ -66,34 +65,52 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     avatar: user?.photoURL || "",
   }
 
+  // Collapsed state: show only expand button
+  if (isCollapsed) {
+    return (
+      <div className="sticky top-0 h-screen flex-shrink-0 border-r bg-sidebar z-30">
+        <button
+          onClick={toggleCollapsed}
+          className="flex items-center justify-center w-10 h-10 mt-2 mx-auto text-muted-foreground hover:text-foreground"
+          title="Expand sidebar"
+        >
+          <IconLayoutSidebarLeftExpand className="size-5" />
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div
-      className={cn(
-        "relative h-full flex-shrink-0 transition-all duration-200",
-        isCollapsed && "w-0 overflow-hidden"
-      )}
-      style={{ width: isCollapsed ? 0 : width }}
+      className="relative sticky top-0 h-screen flex-shrink-0 z-30"
+      style={{ width }}
     >
       <Sidebar collapsible="none" className="h-full" {...props}>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="data-[slot=sidebar-menu-button]:!p-1.5"
-              >
-                <Link href="/dashboard">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <IconMessageChatbot className="size-5" />
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="text-base font-bold text-foreground">SpeakOps</span>
-                    <span className="text-[10px] font-medium text-muted-foreground leading-tight">
-                      Business Intelligence
-                    </span>
-                  </div>
-                </Link>
-              </SidebarMenuButton>
+              <div className="flex items-center justify-between">
+                <SidebarMenuButton
+                  asChild
+                  className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
+                >
+                  <Link href="/dashboard">
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+                      S
+                    </div>
+                    <div className="flex flex-col gap-0.5 leading-none">
+                      <span className="text-base font-bold text-foreground">SpeakOps</span>
+                    </div>
+                  </Link>
+                </SidebarMenuButton>
+                <button
+                  onClick={toggleCollapsed}
+                  className="text-muted-foreground hover:text-foreground p-1 mr-1"
+                  title="Collapse sidebar"
+                >
+                  <IconLayoutSidebarLeftCollapse className="size-4" />
+                </button>
+              </div>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
@@ -117,16 +134,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarFooter>
       </Sidebar>
 
-      {!isCollapsed && (
-        <div
-          className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/20 transition-colors group"
-          onMouseDown={handleMouseDown}
-        >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <IconGripVertical className="size-4 text-muted-foreground" />
-          </div>
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/20 transition-colors group"
+        onMouseDown={handleMouseDown}
+      >
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <IconGripVertical className="size-4 text-muted-foreground" />
         </div>
-      )}
+      </div>
     </div>
   )
 }
