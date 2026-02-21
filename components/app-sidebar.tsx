@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconMessageChatbot, IconFileUpload, IconPlug } from "@tabler/icons-react"
+import { IconMessageChatbot, IconFileUpload, IconPlug, IconSearch, IconX, IconPlus } from "@tabler/icons-react"
 
 import { NavUser } from "@/components/nav-user"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -19,12 +19,19 @@ import { useAuth } from "@/lib/auth-context"
 import { fetchAgents } from "@/lib/api-client"
 import { Agent } from "@/lib/types"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { NavAgents } from "@/components/sidebar/NavAgents"
 import { NavChatHistory } from "@/components/sidebar/NavChatHistory"
+import {
+  SidebarGroupLabel,
+} from "@/components/ui/sidebar"
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
+  const router = useRouter()
   const [agents, setAgents] = React.useState<Agent[]>([])
+  const [isDocSearchOpen, setIsDocSearchOpen] = React.useState(false)
+  const [docSearchQuery, setDocSearchQuery] = React.useState("")
 
   React.useEffect(() => {
     if (user) {
@@ -64,6 +71,42 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <NavAgents agents={agents} />
         
         <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center justify-between">
+            Business Documents
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  setIsDocSearchOpen(!isDocSearchOpen)
+                  setDocSearchQuery("")
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {isDocSearchOpen
+                  ? <IconX className="size-3.5" />
+                  : <IconSearch className="size-3.5" />}
+              </button>
+              <Link href="/documents" className="text-muted-foreground hover:text-foreground">
+                <IconPlus className="size-3.5" />
+              </Link>
+            </div>
+          </SidebarGroupLabel>
+          {isDocSearchOpen && (
+            <div className="px-2 pb-1">
+              <input
+                autoFocus
+                value={docSearchQuery}
+                onChange={(e) => setDocSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && docSearchQuery.trim()) {
+                    router.push(`/documents?q=${encodeURIComponent(docSearchQuery.trim())}`)
+                    setIsDocSearchOpen(false)
+                  }
+                }}
+                placeholder="Search documents..."
+                className="w-full rounded-md bg-muted px-2 py-1 text-xs outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Knowledge Base">
