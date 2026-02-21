@@ -28,13 +28,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Dev bypass: Use a mock user in development
-    if (process.env.NODE_ENV === 'development') {
+    // Dev bypass: Use a mock user in development (unless real auth is requested)
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_REAL_AUTH !== 'true') {
       setUser({
         uid: 'dev-user',
         email: 'dev@evently.local',
         displayName: 'Dev User',
-        photoURL: 'https://avatar.vercel.sh/dev',
+        photoURL: null,
         getIdToken: async () => 'dev-token',
         reload: async () => {},
       } as any)
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     if (user) {
-      if (process.env.NODE_ENV === 'development') return
+      if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_REAL_AUTH !== 'true') return
       await user.getIdToken(true)
       await user.reload()
       // Create shallow copy to trigger re-render if needed, though user object is mutable

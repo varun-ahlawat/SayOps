@@ -57,17 +57,11 @@ export default function HistoryPage() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar variant="inset" />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 lg:p-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight">Call History</h1>
-          </div>
-          <CallHistoryTable calls={calls} />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 lg:p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Call History</h1>
+      </div>
+      <CallHistoryTable calls={calls} />
+    </div>
   )
 }

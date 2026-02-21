@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: speakops-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app/app
+      - ./components:/app/components
+      - ./lib:/app/lib
+      - ./public:/app/public
+      # Prevent node_modules from being overwritten by volume mount
+      - /app/node_modules
+    env_file:
+      - .env.local
+    environment:
+      # Client-side (Browser -> Backend)
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+      # Server-side (Next.js Server -> Backend) - assumes Backend is running on host port 3001
+      - AGENT_BACKEND_URL=http://host.docker.internal:3001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

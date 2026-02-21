@@ -32,6 +32,8 @@ GOVERNANCE.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+Dockerfile.dev
+
 
 ARCHITECTURE_SAYOPS.md
 GOVERNANCE_SAYOPS.md

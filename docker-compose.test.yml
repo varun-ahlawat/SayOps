@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  # Frontend Prod Image (Standalone Check)
+  frontend:
+    image: us-central1-docker.pkg.dev/evently-486001/sayops/app:latest
+    container_name: speakops-prod
+    ports:
+      - "3000:8080"
+    env_file:
+      - .env.local
+    environment:
+      # Prod images listen on port 8080 (Cloud Run spec)
+      - PORT=8080
+      # Can connect to your local backend or staging
+      - NEXT_PUBLIC_BACKEND_URL=http://host.docker.internal:3001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
