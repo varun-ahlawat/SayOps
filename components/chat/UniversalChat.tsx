@@ -48,11 +48,13 @@ export function UniversalChat({
     conversationId: storeConversationId,
     messages: storeMessages,
     isLoading,
+    pendingNavigation,
     toggleOpen,
     setOpen,
     setSize,
     sendMessage: storeSendMessage,
     startNewChat,
+    clearPendingNavigation,
   } = useEvaChatStore()
 
   const [input, setInput] = React.useState("")
@@ -72,6 +74,24 @@ export function UniversalChat({
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Handle navigate_to_page tool calls
+  React.useEffect(() => {
+    if (!pendingNavigation) return
+    const { page, agentId } = pendingNavigation
+    const routes: Record<string, string> = {
+      dashboard: '/dashboard',
+      agents: '/agents',
+      agent_settings: agentId ? `/agents/${agentId}/settings` : '/agents',
+      documents: '/documents',
+      integrations: '/settings',
+      chat_history: agentId ? `/history?agentId=${agentId}` : '/history',
+      settings: '/settings',
+    }
+    const route = routes[page] || '/'
+    router.push(route)
+    clearPendingNavigation()
+  }, [pendingNavigation, router, clearPendingNavigation])
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return

@@ -40,10 +40,11 @@ export function NavSection({
   className,
 }: NavSectionProps) {
   const { sections, setSectionOpen, setSectionSearch } = useSidebarStore()
-  const sectionState = sections[id] || { isOpen: defaultOpen, searchQuery: "" }
+  const sectionState = sections[id] || { isOpen: defaultOpen, searchQuery: '' }
   const isOpen = sectionState.isOpen
   const searchQuery = sectionState.searchQuery
-  const [isSearchActive, setIsSearchActive] = React.useState(false)
+  const [searchVisible, setSearchVisible] = React.useState(false)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
     if (sections[id] === undefined) {
@@ -55,13 +56,18 @@ export function NavSection({
     setSectionSearch(id, e.target.value)
   }
 
-  const handleToggleSearch = (e: React.MouseEvent) => {
+  const clearSearch = () => {
+    setSectionSearch(id, '')
+    setSearchVisible(false)
+  }
+
+  const toggleSearch = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (isSearchActive) {
-      setIsSearchActive(false)
-      setSectionSearch(id, "")
+    if (searchVisible) {
+      clearSearch()
     } else {
-      setIsSearchActive(true)
+      setSearchVisible(true)
+      setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }
 
@@ -77,10 +83,13 @@ export function NavSection({
             {icon && <span className="shrink-0">{icon}</span>}
             <span className="flex-1 text-left">{title}</span>
             {showSearch && (
-              <span className="mr-1" onClick={handleToggleSearch}>
-                {isSearchActive
-                  ? <IconX className="size-3.5 text-muted-foreground hover:text-foreground" />
-                  : <IconSearch className="size-3.5 text-muted-foreground hover:text-foreground" />}
+              <span
+                role="button"
+                className="mr-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                onClick={toggleSearch}
+                title="Search"
+              >
+                <IconSearch className="size-3.5" />
               </span>
             )}
             {headerAction && (
@@ -98,29 +107,27 @@ export function NavSection({
         </SidebarGroupLabel>
 
         <CollapsibleContent>
-          {showSearch && isSearchActive && (
+          {showSearch && searchVisible && (
             <div className="px-2 mb-2">
               <div className="relative">
                 <IconSearch className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                 <Input
-                  autoFocus
+                  ref={searchInputRef}
                   value={searchQuery}
                   onChange={handleSearchChange}
                   placeholder={searchPlaceholder}
                   className="h-7 pl-7 pr-7 text-xs bg-muted/50"
                   onClick={(e) => e.stopPropagation()}
                 />
-                {searchQuery && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSectionSearch(id, "")
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <IconX className="size-3.5" />
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    clearSearch()
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <IconX className="size-3.5" />
+                </button>
               </div>
             </div>
           )}

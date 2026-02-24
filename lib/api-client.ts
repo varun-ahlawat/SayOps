@@ -256,8 +256,8 @@ export async function fetchIntegrations(): Promise<any[]> {
   }
 }
 
-export async function getGoogleConnectUrl(): Promise<string> {
-  const res = await apiFetch<{ url: string }>("/integrations/google/connect")
+export async function getGoogleConnectUrl(provider: 'google' | 'gmail' = 'google'): Promise<string> {
+  const res = await apiFetch<{ url: string }>(`/integrations/${provider}/connect`)
   return res.url
 }
 

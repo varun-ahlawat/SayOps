@@ -18,7 +18,8 @@ interface EvaChatState {
   messages: EvaMessage[]
   isLoading: boolean
   error: string | null
-  
+  pendingNavigation: { page: string; agentId?: string } | null
+
   toggleOpen: () => void
   setOpen: (open: boolean) => void
   setSize: (width: number, height: number) => void
@@ -26,6 +27,7 @@ interface EvaChatState {
   sendMessage: (content: string) => Promise<void>
   startNewChat: () => void
   loadConversation: (conversationId: string, messages: EvaMessage[]) => void
+  clearPendingNavigation: () => void
 }
 
 const DEFAULT_WIDTH = 380
@@ -45,6 +47,7 @@ export const useEvaChatStore = create<EvaChatState>()(
       messages: [],
       isLoading: false,
       error: null,
+      pendingNavigation: null,
 
       toggleOpen: () => {
         set((state) => ({ isOpen: !state.isOpen }))
@@ -98,10 +101,17 @@ export const useEvaChatStore = create<EvaChatState>()(
             })),
           }
 
+          // Detect navigate_to_page tool calls
+          const navCall = response.toolCalls?.find((t) => t.name === 'navigate_to_page')
+          const pendingNavigation = navCall
+            ? { page: navCall.args.page, agentId: navCall.args.agentId }
+            : null
+
           set((state) => ({
             messages: [...state.messages, assistantMsg],
             conversationId: response.sessionID || state.conversationId,
             isLoading: false,
+            pendingNavigation,
           }))
         } catch (err) {
           const errorMsg: EvaMessage = {
@@ -128,6 +138,10 @@ export const useEvaChatStore = create<EvaChatState>()(
 
       loadConversation: (conversationId: string, messages: EvaMessage[]) => {
         set({ conversationId, messages })
+      },
+
+      clearPendingNavigation: () => {
+        set({ pendingNavigation: null })
       },
     }),
     {

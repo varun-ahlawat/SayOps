@@ -6,11 +6,13 @@ import { useAuth } from "@/lib/auth-context"
 import { chatWithAgent, fetchMessages } from "@/lib/api-client"
 import { UniversalChat, type ChatMessageProps } from "@/components/chat"
 import { Spinner } from "@/components/ui/spinner"
+import { useConversationsStore } from "@/stores"
 
 export default function ChatPage() {
   const { conversationId } = useParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { invalidateAndRefetch } = useConversationsStore()
   const [messages, setMessages] = useState<ChatMessageProps[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -77,6 +79,7 @@ export default function ChatPage() {
 
         if (conversationId === "new" && response.sessionID) {
           router.replace(`/chat/${response.sessionID}`)
+          invalidateAndRefetch()
         }
       } catch (err) {
         console.error("Chat failed", err)
