@@ -83,13 +83,14 @@ export function NavSection({
             {icon && <span className="shrink-0">{icon}</span>}
             <span className="flex-1 text-left">{title}</span>
             {showSearch && (
-              <button
-                className="mr-0.5 text-muted-foreground hover:text-foreground"
+              <span
+                role="button"
+                className="mr-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
                 onClick={toggleSearch}
                 title="Search"
               >
                 <IconSearch className="size-3.5" />
-              </button>
+              </span>
             )}
             {headerAction && (
               <span

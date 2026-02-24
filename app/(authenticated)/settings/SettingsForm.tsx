@@ -28,20 +28,22 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { 
-  fetchIntegrations, 
-  getGoogleConnectUrl, 
+import {
+  fetchIntegrations,
+  getGoogleConnectUrl,
   disconnectIntegration,
   createOrgInvite,
   fetchOrgInvites,
   fetchOrgMembers,
   fetchUser
 } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 import { OrgInvite, OrgMember } from "@/lib/types"
 
 export default function SettingsForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
   const [integrations, setIntegrations] = React.useState<any[]>([])
   const [invites, setInvites] = React.useState<OrgInvite[]>([])
   const [members, setMembers] = React.useState<OrgMember[]>([])
@@ -54,6 +56,7 @@ export default function SettingsForm() {
   const hubspotConnected = searchParams.get("hubspot_connected")
   const error = searchParams.get("error")
 
+  // Show toasts for OAuth callback results
   React.useEffect(() => {
     if (googleConnected) {
       toast.success("Google Calendar connected successfully!")
@@ -71,8 +74,13 @@ export default function SettingsForm() {
       toast.error(`Integration failed: ${error}`)
       router.replace("/settings")
     }
-    loadData()
   }, [googleConnected, gmailConnected, hubspotConnected, error, router])
+
+  // Wait for Firebase auth to be ready before fetching data
+  React.useEffect(() => {
+    if (authLoading || !user) return
+    loadData()
+  }, [authLoading, user])
 
   const loadData = async () => {
     try {
@@ -132,7 +140,7 @@ export default function SettingsForm() {
     }
   }
 
-  const googleIntegration = integrations.find(i => i.provider === 'google')
+  const googleIntegration = integrations.find(i => i.provider === 'google_calendar' || i.provider === 'google')
 
   return (
     <div className="flex flex-col gap-8 p-4 lg:p-6 max-w-4xl mx-auto">
@@ -187,7 +195,7 @@ export default function SettingsForm() {
                     variant="outline" 
                     size="sm" 
                     className="text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDisconnect('google')}
+                    onClick={() => handleDisconnect(googleIntegration.provider)}
                   >
                     <IconUnlink className="mr-2 h-4 w-4" />
                     Disconnect
