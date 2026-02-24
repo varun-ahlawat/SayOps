@@ -6,13 +6,14 @@ import { useAuth } from "@/lib/auth-context"
 import { chatWithAgent, fetchMessages } from "@/lib/api-client"
 import { UniversalChat, type ChatMessageProps } from "@/components/chat"
 import { Spinner } from "@/components/ui/spinner"
-import { useConversationsStore } from "@/stores"
+import { useConversationsStore, useEvaChatStore, type EvaMessage } from "@/stores"
 
 export default function ChatPage() {
   const { conversationId } = useParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { invalidateAndRefetch } = useConversationsStore()
+  const { loadConversation } = useEvaChatStore()
   const [messages, setMessages] = useState<ChatMessageProps[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -34,18 +35,32 @@ export default function ChatPage() {
   const loadMessages = async () => {
     try {
       const data = await fetchMessages(conversationId as string)
-      setMessages(
-        data.map((m) => ({
-          role: m.role as "user" | "assistant" | "tool",
-          content: m.content || (m.tool_result ? `Ran tool: ${m.tool_name}` : ""),
-          timestamp: new Date(m.created_at).getTime(),
-          toolCalls: m.tool_calls?.map((t: any) => ({
-            name: t.name || t,
-            args: t.args,
-            status: "completed" as const,
-          })),
-        }))
-      )
+      const mapped = data.map((m) => ({
+        role: m.role as "user" | "assistant" | "tool",
+        content: m.content || (m.tool_result ? `Ran tool: ${m.tool_name}` : ""),
+        timestamp: new Date(m.created_at).getTime(),
+        toolCalls: m.tool_calls?.map((t: any) => ({
+          name: t.name || t,
+          args: t.args,
+          status: "completed" as const,
+        })),
+      }))
+      setMessages(mapped)
+
+      // Sync with global store so overlay widget stays current
+      const evaMessages: EvaMessage[] = data.map((m, i) => ({
+        id: m.id || `${i}-${Date.now()}`,
+        role: m.role as "user" | "assistant" | "tool",
+        content: m.content || (m.tool_result ? `Ran tool: ${m.tool_name}` : ""),
+        timestamp: new Date(m.created_at).getTime(),
+        toolCalls: m.tool_calls?.map((t: any) => ({
+          name: t.name || t,
+          args: t.args,
+          result: t.result,
+          status: "completed" as const,
+        })),
+      }))
+      loadConversation(conversationId as string, evaMessages)
     } catch (err) {
       console.error("Failed to load messages", err)
     } finally {
@@ -63,7 +78,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, userMsg])
 
       try {
-        const response = await chatWithAgent(content, "super")
+        const response = await chatWithAgent(content, "super", undefined, conversationId !== "new" ? (conversationId as string) : undefined)
 
         const assistantMsg: ChatMessageProps = {
           role: "assistant",
@@ -75,10 +90,28 @@ export default function ChatPage() {
             status: "completed" as const,
           })),
         }
-        setMessages((prev) => [...prev, assistantMsg])
+        setMessages((prev) => {
+          const updated = [...prev, assistantMsg]
 
-        if (conversationId === "new" && response.sessionID) {
-          router.replace(`/chat/${response.sessionID}`)
+          // Sync with global store so overlay widget stays current
+          const resolvedId = (response.conversationId || conversationId) as string
+          const evaMessages: EvaMessage[] = updated.map((m, i) => ({
+            id: `${m.timestamp}-${i}`,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp || Date.now(),
+            toolCalls: m.toolCalls?.map((t) => ({
+              ...t,
+              result: response.toolCalls?.find((tc) => tc.name === t.name)?.result,
+            })),
+          }))
+          loadConversation(resolvedId, evaMessages)
+
+          return updated
+        })
+
+        if (conversationId === "new" && response.conversationId) {
+          router.replace(`/chat/${response.conversationId}`)
           invalidateAndRefetch()
         }
       } catch (err) {
@@ -91,7 +124,7 @@ export default function ChatPage() {
         setMessages((prev) => [...prev, errorMsg])
       }
     },
-    [conversationId, router]
+    [conversationId, router, loadConversation, invalidateAndRefetch]
   )
 
   if (authLoading || loading) {

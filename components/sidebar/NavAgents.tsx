@@ -63,14 +63,6 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
             </span>
           </SidebarMenuItem>
         )}
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild className="text-muted-foreground">
-            <Link href="/create-agent">
-              <IconPlus className="size-4" />
-              <span>Create New Agent</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </NavSection>
   )

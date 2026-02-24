@@ -118,14 +118,21 @@ export async function deleteAgent(agentId: string): Promise<{ success: boolean }
 
 // ---- Chat / Interaction ----
 
-export async function chatWithAgent(prompt: string, agentId?: string, customerId?: string, conversationId?: string): Promise<ChatResponse> {
+export async function chatWithAgent(
+  prompt: string,
+  agentId?: string,
+  customerId?: string,
+  conversationId?: string,
+  history?: { role: 'user' | 'assistant' | 'tool'; content?: string; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[]
+): Promise<ChatResponse> {
   return apiFetch<ChatResponse>("/agent", {
     method: "POST",
-    body: JSON.stringify({ 
-      prompt, 
-      agent: agentId, 
+    body: JSON.stringify({
+      prompt,
+      agent: agentId,
       customer_id: customerId,
-      conversation_id: conversationId
+      conversation_id: conversationId,
+      history,
     }),
   })
 }
@@ -196,12 +203,42 @@ export async function fetchConversations(agentId?: string, scope?: 'me'): Promis
   const endpoint = queryString ? `/conversations?${queryString}` : "/conversations"
   
   const res = await apiFetch<{ conversations: Conversation[] }>(endpoint)
-  return res.conversations ?? []
+  
+  // Flatten nested metadata.summary objects from old corrupted data
+  const conversations = res.conversations ?? []
+  return conversations.map(c => {
+    if (c.metadata?.summary && typeof c.metadata.summary === 'object') {
+      return {
+        ...c,
+        metadata: {
+          ...c.metadata,
+          ...(c.metadata.summary as any),
+          summary: (c.metadata.summary as any).summary
+        }
+      }
+    }
+    return c
+  })
 }
 
 export async function fetchEvaConversations(): Promise<Conversation[]> {
   const res = await apiFetch<{ conversations: Conversation[] }>("/conversations?agentId=super")
-  return res.conversations ?? []
+  
+  // Flatten nested metadata.summary objects from old corrupted data
+  const conversations = res.conversations ?? []
+  return conversations.map(c => {
+    if (c.metadata?.summary && typeof c.metadata.summary === 'object') {
+      return {
+        ...c,
+        metadata: {
+          ...c.metadata,
+          ...(c.metadata.summary as any),
+          summary: (c.metadata.summary as any).summary
+        }
+      }
+    }
+    return c
+  })
 }
 
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
@@ -236,7 +273,8 @@ export async function fetchCalls(agentId: string): Promise<any[]> {
       agent_id: c.agent_id,
       timestamp: c.started_at,
       duration_seconds: 0,
-      summary: c.metadata?.summary || "Conversation",
+      summary: typeof c.metadata?.summary === 'string' ? c.metadata.summary : 
+               (c.metadata?.summary && typeof c.metadata.summary === 'object' ? (c.metadata.summary as any).summary : "Conversation"),
       caller_phone: c.customer_id || "Web User",
     }))
   } catch {

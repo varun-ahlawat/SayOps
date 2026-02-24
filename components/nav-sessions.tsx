@@ -26,6 +26,7 @@ import {
 import { Conversation } from "@/lib/types"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { getChatSummary } from "@/lib/utils"
 
 export function NavSessions({
   sessions,
@@ -55,7 +56,7 @@ export function NavSessions({
             <SidebarMenuButton asChild>
               <Link href={`/assistant/${session.id}`}>
                 <IconMessageChatbot />
-                <span className="truncate">{session.metadata?.summary || "Session Detail"}</span>
+                <span className="truncate">{getChatSummary(session.metadata, "Session Detail")}</span>
               </Link>
             </SidebarMenuButton>
             <DropdownMenu>
