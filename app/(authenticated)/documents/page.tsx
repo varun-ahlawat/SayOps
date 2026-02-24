@@ -17,11 +17,14 @@ import {
   IconAlertCircle
 } from "@tabler/icons-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface UploadItem {
   id: string
   fileName: string
+  fileSize: number
   status: "queued" | "uploading" | "done" | "error"
+  progress: number
   error?: string
 }
 
@@ -34,6 +37,7 @@ export default function DocumentsPage() {
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([])
   const processingRef = useRef(false)
   const queueRef = useRef<UploadItem[]>([])
+  const progressIntervals = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map())
 
   const loadDocs = useCallback(async () => {
     try {
@@ -53,10 +57,8 @@ export default function DocumentsPage() {
       return
     }
 
-    // Load documents and fetch organization info
     loadDocs()
 
-    // Fetch organization info
     fetchCurrentUser().then((data) => {
       if (data.organization?.id) {
         setOrganizationId(data.organization.id)
@@ -66,11 +68,35 @@ export default function DocumentsPage() {
 
   const fileMapRef = useRef<Map<string, File>>(new Map())
 
+  function startProgressSimulation(id: string) {
+    const interval = setInterval(() => {
+      queueRef.current = queueRef.current.map(i =>
+        i.id === id
+          ? { ...i, progress: i.progress + (92 - i.progress) * 0.05 }
+          : i
+      )
+      setUploadQueue([...queueRef.current])
+    }, 200)
+    progressIntervals.current.set(id, interval)
+  }
+
+  function stopProgressSimulation(id: string, finalProgress: number) {
+    const interval = progressIntervals.current.get(id)
+    if (interval) {
+      clearInterval(interval)
+      progressIntervals.current.delete(id)
+    }
+    queueRef.current = queueRef.current.map(i =>
+      i.id === id ? { ...i, progress: finalProgress } : i
+    )
+    setUploadQueue([...queueRef.current])
+  }
+
   const processQueue = useCallback(async (files: File[]) => {
     const newItems: UploadItem[] = files.map((file, i) => {
       const id = `${Date.now()}-${i}-${file.name}`
       fileMapRef.current.set(id, file)
-      return { id, fileName: file.name, status: "queued" as const }
+      return { id, fileName: file.name, fileSize: file.size, status: "queued" as const, progress: 0 }
     })
     queueRef.current = [...queueRef.current, ...newItems]
     setUploadQueue([...queueRef.current])
@@ -83,19 +109,23 @@ export default function DocumentsPage() {
       if (!next) break
 
       queueRef.current = queueRef.current.map(i =>
-        i.id === next.id ? { ...i, status: "uploading" as const } : i
+        i.id === next.id ? { ...i, status: "uploading" as const, progress: 0 } : i
       )
       setUploadQueue([...queueRef.current])
+      startProgressSimulation(next.id)
 
       const file = fileMapRef.current.get(next.id)
       if (!file) continue
 
       try {
         await uploadFiles([file], organizationId)
+        stopProgressSimulation(next.id, 100)
         queueRef.current = queueRef.current.map(i =>
           i.id === next.id ? { ...i, status: "done" as const } : i
         )
       } catch (err: any) {
+        const frozen = queueRef.current.find(i => i.id === next.id)?.progress ?? 0
+        stopProgressSimulation(next.id, frozen)
         queueRef.current = queueRef.current.map(i =>
           i.id === next.id ? { ...i, status: "error" as const, error: err.message } : i
         )
@@ -111,7 +141,6 @@ export default function DocumentsPage() {
     if (doneCount > 0) {
       toast.success(`${doneCount} file${doneCount > 1 ? "s" : ""} uploaded${errorCount > 0 ? ` (${errorCount} failed)` : ""}`)
     }
-    // Clear completed items after a delay
     setTimeout(() => {
       queueRef.current = queueRef.current.filter(i => i.status !== "done")
       setUploadQueue([...queueRef.current])
@@ -141,6 +170,9 @@ export default function DocumentsPage() {
     return <div className="flex min-h-screen items-center justify-center">Loading Knowledge Base...</div>
   }
 
+  const activeCount = uploadQueue.filter(i => i.status !== "done").length
+  const doneCount = uploadQueue.filter(i => i.status === "done").length
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 lg:p-8">
       <div className="flex items-center justify-between">
@@ -148,7 +180,7 @@ export default function DocumentsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
           <p className="text-muted-foreground mt-1">Upload documents to train your AI agents on your business data.</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <input
             type="file"
@@ -168,17 +200,94 @@ export default function DocumentsPage() {
       </div>
 
       {uploadQueue.length > 0 && (
-        <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload Queue</p>
-          {uploadQueue.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 text-sm">
-              {item.status === "uploading" && <IconLoader2 className="size-4 animate-spin text-primary" />}
-              {item.status === "queued" && <IconFile className="size-4 text-muted-foreground" />}
-              {item.status === "done" && <IconCheck className="size-4 text-green-600" />}
-              {item.status === "error" && <IconAlertCircle className="size-4 text-red-600" />}
-              <span className={item.status === "error" ? "text-red-600" : ""}>{item.fileName}</span>
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+            <div className="flex items-center gap-2">
+              {activeCount > 0
+                ? <IconLoader2 className="size-4 animate-spin text-primary" />
+                : <IconCheck className="size-4 text-green-600" />
+              }
+              <span className="text-sm font-semibold">
+                {activeCount > 0 ? `Processing ${activeCount} file${activeCount > 1 ? "s" : ""}` : "All uploads complete"}
+              </span>
             </div>
-          ))}
+            <span className="text-xs text-muted-foreground">
+              {doneCount} / {uploadQueue.length} done
+            </span>
+          </div>
+
+          {/* Items */}
+          <div className="divide-y">
+            {uploadQueue.map((item) => {
+              const queuePosition = uploadQueue
+                .filter(i => i.status === "queued")
+                .findIndex(i => i.id === item.id)
+
+              return (
+                <div key={item.id} className="px-4 py-3 space-y-2">
+                  {/* Row 1: icon + filename + badge */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {item.status === "uploading" && <IconLoader2 className="size-4 shrink-0 animate-spin text-primary" />}
+                      {item.status === "queued"    && <IconFile className="size-4 shrink-0 text-muted-foreground" />}
+                      {item.status === "done"      && <IconCheck className="size-4 shrink-0 text-green-600" />}
+                      {item.status === "error"     && <IconAlertCircle className="size-4 shrink-0 text-red-500" />}
+                      <span className="text-sm font-medium truncate">{item.fileName}</span>
+                    </div>
+                    <div className="shrink-0">
+                      {item.status === "uploading" && (
+                        <span className="text-xs font-semibold tabular-nums text-primary">
+                          {Math.round(item.progress)}%
+                        </span>
+                      )}
+                      {item.status === "queued" && (
+                        <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          In queue #{queuePosition + 1}
+                        </span>
+                      )}
+                      {item.status === "done" && (
+                        <span className="text-[10px] font-medium text-green-600 bg-green-50 dark:bg-green-950/30 px-2 py-0.5 rounded-full">
+                          Complete
+                        </span>
+                      )}
+                      {item.status === "error" && (
+                        <span className="text-[10px] font-medium text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-full">
+                          Failed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 2: progress bar */}
+                  {item.status !== "error" && (
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-200",
+                          item.status === "uploading" && "bg-primary",
+                          item.status === "queued"    && "bg-muted-foreground/20",
+                          item.status === "done"      && "bg-green-500",
+                        )}
+                        style={{
+                          width: item.status === "uploading"
+                            ? `${item.progress}%`
+                            : item.status === "done"
+                            ? "100%"
+                            : "0%",
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Row 3: error message */}
+                  {item.status === "error" && item.error && (
+                    <p className="text-xs text-red-500 pl-6">{item.error}</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -230,7 +339,7 @@ export default function DocumentsPage() {
                     </div>
                   )}
                 </div>
-                
+
                 <Button
                   variant="ghost"
                   size="icon"
