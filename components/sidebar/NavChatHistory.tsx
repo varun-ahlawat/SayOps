@@ -11,6 +11,7 @@ import {
 import { NavSection } from "./NavSection"
 import { useSidebarStore, useConversationsStore } from "@/stores"
 import { useAuth } from "@/lib/auth-context"
+import { getChatSummary } from "@/lib/utils"
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -39,7 +40,7 @@ export function NavChatHistory() {
   const filteredConversations = React.useMemo(() => {
     if (!searchQuery) return evaConversations
     return evaConversations.filter((c) =>
-      (c.metadata?.summary || "Eva Chat").toLowerCase().includes(searchQuery.toLowerCase())
+      getChatSummary(c.metadata, "Eva Chat").toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [evaConversations, searchQuery])
 
@@ -74,7 +75,7 @@ export function NavChatHistory() {
                 <Link href={`/chat/${chat.id}`}>
                   <IconMessage className="size-4 text-muted-foreground" />
                   <span className="truncate flex-1">
-                    {chat.metadata?.summary || "Eva Chat"}
+                    {getChatSummary(chat.metadata, "Eva Chat")}
                   </span>
                   <span className="text-[10px] text-muted-foreground ml-auto">
                     {formatRelativeDate(chat.started_at)}

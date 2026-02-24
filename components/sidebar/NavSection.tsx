@@ -131,7 +131,7 @@ export function NavSection({
               </div>
             </div>
           )}
-          <SidebarGroupContent>{children}</SidebarGroupContent>
+          <SidebarGroupContent className="pl-2 ml-2 border-l border-sidebar-border">{children}</SidebarGroupContent>
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>

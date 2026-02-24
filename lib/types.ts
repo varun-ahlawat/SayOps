@@ -145,6 +145,7 @@ export interface ChatResponse {
   output: string
   broadcast: string
   sessionID: string
+  conversationId?: string
   steps: number
-  toolCalls: { name: string; args: any }[]
+  toolCalls: { name: string; args: any; result?: any }[]
 }

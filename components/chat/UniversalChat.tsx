@@ -14,13 +14,14 @@ import {
   IconSparkles,
   IconPaperclip,
   IconChevronDown,
+  IconHistory,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn, getChatSummary } from "@/lib/utils"
 import { ChatMessage, type ChatMessageProps } from "./ChatMessage"
-import { useEvaChatStore, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT } from "@/stores"
+import { useEvaChatStore, useConversationsStore, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT } from "@/stores"
 
 export interface UniversalChatProps {
   mode: 'overlay' | 'fullscreen'
@@ -38,7 +39,7 @@ export function UniversalChat({
   initialMessages,
   onSendMessage,
   title = "Eva",
-  subtitle = "Your AI Assistant",
+  subtitle = "Your Personal Assistant",
   showAttachments = false,
 }: UniversalChatProps) {
   const router = useRouter()
@@ -48,18 +49,25 @@ export function UniversalChat({
     conversationId: storeConversationId,
     messages: storeMessages,
     isLoading,
+    queuedMessages,
     pendingNavigation,
     toggleOpen,
     setOpen,
     setSize,
     sendMessage: storeSendMessage,
+    removeQueuedMessage,
     startNewChat,
     clearPendingNavigation,
+    loadConversationFromDB,
   } = useEvaChatStore()
+
+  const { evaConversations, fetchEvaConversations } = useConversationsStore()
+  const [historyOpen, setHistoryOpen] = React.useState(false)
 
   const [input, setInput] = React.useState("")
   const [attachments, setAttachments] = React.useState<File[]>([])
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const resizeRef = React.useRef<{
     startX: number
     startY: number
@@ -84,7 +92,7 @@ export function UniversalChat({
       agents: '/agents',
       agent_settings: agentId ? `/agents/${agentId}/settings` : '/agents',
       documents: '/documents',
-      integrations: '/settings',
+      integrations: '/integrations',
       chat_history: agentId ? `/history?agentId=${agentId}` : '/history',
       settings: '/settings',
     }
@@ -93,8 +101,20 @@ export function UniversalChat({
     clearPendingNavigation()
   }, [pendingNavigation, router, clearPendingNavigation])
 
+  // Auto-resize textarea to fit content
+  const autoResize = React.useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 150) + 'px'
+  }, [])
+
+  React.useEffect(() => {
+    autoResize()
+  }, [input, autoResize])
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim()) return
     const content = input
     setInput("")
     setAttachments([])
@@ -192,6 +212,44 @@ export function UniversalChat({
           >
             <IconPlus className="size-4" />
           </Button>
+          {!isFullscreen && (
+            <Popover open={historyOpen} onOpenChange={(open) => {
+              setHistoryOpen(open)
+              if (open) fetchEvaConversations()
+            }}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-primary-foreground hover:bg-primary-foreground/20"
+                  title="Recent Chats"
+                >
+                  <IconHistory className="size-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 z-[60]" align="end">
+                <div className="text-xs font-medium text-muted-foreground px-2 py-1">Recent Chats</div>
+                <div className="max-h-48 overflow-y-auto">
+                  {evaConversations.length === 0 ? (
+                    <div className="text-xs text-muted-foreground px-2 py-3 text-center">No previous chats</div>
+                  ) : (
+                    evaConversations.slice(0, 8).map((conv) => (
+                      <button
+                        key={conv.id}
+                        className="w-full text-left px-2 py-1.5 text-sm rounded-md hover:bg-muted truncate"
+                        onClick={() => {
+                          loadConversationFromDB(conv.id)
+                          setHistoryOpen(false)
+                        }}
+                      >
+                        {getChatSummary(conv.metadata, "Eva Chat")}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -251,9 +309,9 @@ export function UniversalChat({
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((msg) => (
+            {messages.map((msg, i) => (
               <ChatMessage
-                key={msg.timestamp || Math.random()}
+                key={`${(msg as any).id || msg.timestamp || 'msg'}-${i}`}
                 role={msg.role}
                 content={msg.content}
                 timestamp={msg.timestamp}
@@ -297,6 +355,24 @@ export function UniversalChat({
       )}
 
       <div className="p-3 border-t bg-muted/30 shrink-0">
+        {queuedMessages.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {queuedMessages.map((qm) => (
+              <div
+                key={qm.id}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs max-w-full"
+              >
+                <span className="truncate">{qm.content}</span>
+                <button
+                  onClick={() => removeQueuedMessage(qm.id)}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <IconX className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2 bg-background border rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-primary">
           {showAttachments && (
             <label className="cursor-pointer p-1.5 hover:bg-muted rounded-md">
@@ -309,19 +385,20 @@ export function UniversalChat({
               />
             </label>
           )}
-          <Input
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message Eva..."
-            className="flex-1 bg-transparent border-none focus-visible:ring-0 text-sm"
-            disabled={isLoading}
+            placeholder={isLoading ? "Type to queue a message..." : "Message Eva..."}
+            className="flex-1 bg-transparent border-none focus-visible:ring-0 focus:outline-none text-sm resize-none min-h-[36px] max-h-[150px] py-2 px-3"
+            rows={1}
           />
           <Button
             size="icon"
             className="size-8 rounded-lg"
             onClick={handleSend}
-            disabled={isLoading || !input.trim()}
+            disabled={!input.trim()}
           >
             <IconSend className="size-4" />
           </Button>

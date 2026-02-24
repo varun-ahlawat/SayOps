@@ -42,14 +42,6 @@ export function NavCallHistory() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild className="text-muted-foreground">
-            <Link href="/history">
-              <IconPhone className="size-4" />
-              <span>View All History</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </NavSection>
   )
