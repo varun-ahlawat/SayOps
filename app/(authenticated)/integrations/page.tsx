@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { fetchIntegrations, getGoogleConnectUrl, disconnectIntegration } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -38,9 +39,29 @@ const AVAILABLE_INTEGRATIONS = [
 ]
 
 export default function IntegrationsPage() {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [connectedProviders, setConnectedProviders] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
+
+  // Handle OAuth callback query params (e.g. ?google_connected=true)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const googleConnected = params.get("google_connected")
+    const gmailConnected = params.get("gmail_connected")
+    const error = params.get("error")
+
+    if (googleConnected) {
+      toast({ title: "Google Calendar connected successfully!" })
+      router.replace("/integrations")
+    } else if (gmailConnected) {
+      toast({ title: "Gmail connected successfully!" })
+      router.replace("/integrations")
+    } else if (error) {
+      toast({ title: "Integration failed", description: error, variant: "destructive" })
+      router.replace("/integrations")
+    }
+  }, [router])
 
   useEffect(() => {
     if (authLoading || !user) return

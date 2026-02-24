@@ -1,27 +1,87 @@
 "use client"
 
-import { IconPlug } from "@tabler/icons-react"
+import * as React from "react"
+import { IconPlug, IconPlus } from "@tabler/icons-react"
 import Link from "next/link"
 import {
-  SidebarGroup,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { NavSection } from "./NavSection"
+import { useAuth } from "@/lib/auth-context"
+import { fetchIntegrations } from "@/lib/api-client"
+
+interface IntegrationStatus {
+  provider: string
+  status: 'active' | string
+}
+
+const KNOWN_INTEGRATIONS = [
+  { provider: 'google_calendar', label: 'Google Calendar' },
+  { provider: 'gmail', label: 'Gmail' },
+]
 
 export function NavIntegrations() {
+  const { user } = useAuth()
+  const [connected, setConnected] = React.useState<Record<string, IntegrationStatus>>({})
+  const [loaded, setLoaded] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!user) return
+    fetchIntegrations()
+      .then((data) => {
+        const map: Record<string, IntegrationStatus> = {}
+        for (const i of data || []) {
+          map[i.provider] = { provider: i.provider, status: i.status }
+        }
+        setConnected(map)
+      })
+      .catch(console.error)
+      .finally(() => setLoaded(true))
+  }, [user])
+
+  const getStatusDot = (provider: string) => {
+    const integration = connected[provider]
+    if (!integration) {
+      // Never connected
+      return <span className="size-2 rounded-full bg-muted-foreground/40 shrink-0" />
+    }
+    if (integration.status === 'active') {
+      return <span className="size-2 rounded-full bg-green-500 shrink-0" />
+    }
+    // Connected but inactive/paused
+    return <span className="size-2 rounded-full bg-red-500 shrink-0" />
+  }
+
   return (
-    <SidebarGroup>
+    <NavSection
+      id="integrations"
+      title="Integrations"
+      icon={<IconPlug className="size-4" />}
+      defaultOpen={false}
+      headerAction={
+        <Link
+          href="/integrations"
+          className="text-muted-foreground hover:text-foreground"
+          title="Manage Integrations"
+        >
+          <IconPlus className="size-4" />
+        </Link>
+      }
+    >
       <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <Link href="/integrations">
-              <IconPlug className="size-4" />
-              <span>Integrations</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        {KNOWN_INTEGRATIONS.map((integration) => (
+          <SidebarMenuItem key={integration.provider}>
+            <SidebarMenuButton asChild>
+              <Link href="/integrations" className="flex items-center gap-2">
+                {getStatusDot(integration.provider)}
+                <span className="truncate">{integration.label}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
       </SidebarMenu>
-    </SidebarGroup>
+    </NavSection>
   )
 }

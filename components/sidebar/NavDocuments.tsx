@@ -41,14 +41,6 @@ export function NavDocuments() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild className="text-muted-foreground">
-            <Link href="/documents">
-              <IconPlus className="size-4" />
-              <span>Upload New</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </NavSection>
   )

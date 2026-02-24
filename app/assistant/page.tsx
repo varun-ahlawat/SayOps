@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconMessageChatbot, IconPlus, IconArrowRight } from "@tabler/icons-react"
 import { Conversation } from "@/lib/types"
+import { getChatSummary } from "@/lib/utils"
 
 export default function AssistantPage() {
   const router = useRouter()
@@ -92,7 +93,7 @@ export default function AssistantPage() {
                 <Card key={conv.id} className="hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => router.push(`/assistant/${conv.id}`)}>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg line-clamp-1">
-                      {conv.metadata?.summary || "Strategy Session"}
+                      {getChatSummary(conv.metadata, "Strategy Session")}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
                       {new Date(conv.started_at).toLocaleDateString()} at {new Date(conv.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

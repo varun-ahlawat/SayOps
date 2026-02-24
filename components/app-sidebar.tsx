@@ -85,7 +85,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       className="relative sticky top-0 h-screen flex-shrink-0 z-30"
       style={{ width }}
     >
-      <Sidebar collapsible="none" className="h-full" {...props}>
+      <Sidebar collapsible="none" className="h-full !w-full" {...props}>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -120,14 +120,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <NavChatHistory />
           <NavCallHistory />
           <NavDocuments />
-          <NavIntegrations />
+          <div className="mt-auto">
+            <NavIntegrations />
+          </div>
         </SidebarContent>
 
         <SidebarFooter className="gap-2 p-4">
           <div className="flex items-center justify-between px-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Settings
-            </p>
             <ThemeToggle />
           </div>
           <NavUser user={userData} />
