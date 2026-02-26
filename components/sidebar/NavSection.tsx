@@ -45,6 +45,7 @@ export function NavSection({
   const searchQuery = sectionState.searchQuery
   const [searchVisible, setSearchVisible] = React.useState(false)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const wasOpenRef = React.useRef<boolean | null>(null)
 
   React.useEffect(() => {
     if (sections[id] === undefined) {
@@ -64,8 +65,15 @@ export function NavSection({
   const toggleSearch = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (searchVisible) {
-      clearSearch()
+      setSectionSearch(id, '')
+      setSearchVisible(false)
+      if (wasOpenRef.current === false) {
+        setSectionOpen(id, false)
+      }
+      wasOpenRef.current = null
     } else {
+      wasOpenRef.current = isOpen
+      if (!isOpen) setSectionOpen(id, true)
       setSearchVisible(true)
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }

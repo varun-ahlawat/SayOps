@@ -65,7 +65,7 @@ export function ChatMessage({
 
       <div
         className={cn(
-          "flex flex-col gap-1.5 max-w-[85%]",
+          "flex flex-col gap-1.5 max-w-[85%] min-w-0",
           isUser ? "items-end" : "items-start"
         )}
       >
@@ -101,7 +101,7 @@ export function ChatMessage({
             )}
           >
             {isUser ? (
-              <div className="whitespace-pre-wrap">{text}</div>
+              <div className="whitespace-pre-wrap break-words">{text}</div>
             ) : (
               <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1 prose-pre:my-1 prose-code:before:content-none prose-code:after:content-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
