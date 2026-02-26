@@ -12,10 +12,12 @@ import { useSidebarStore } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
 import { fetchDocuments } from "@/lib/api-client"
 import { UserDocument } from "@/lib/types"
+import { useAuth } from "@/lib/auth-context"
 
 const PAGE_SIZE = 6
 
 export function NavDocuments() {
+  const { user } = useAuth()
   const { sections } = useSidebarStore()
   const { setView } = useViewParams()
   const searchQuery = sections.documents?.searchQuery || ""
@@ -24,10 +26,11 @@ export function NavDocuments() {
   const [showAll, setShowAll] = React.useState(false)
 
   React.useEffect(() => {
+    if (!user) return
     fetchDocuments()
       .then(setDocuments)
       .catch(() => {})
-  }, [])
+  }, [user])
 
   const filtered = searchQuery
     ? documents.filter(d => d.file_name.toLowerCase().includes(searchQuery.toLowerCase()))
