@@ -73,12 +73,20 @@ export interface Conversation {
   updated_at: string
 }
 
+export interface MessagePart {
+  type: 'text' | 'image' | 'image_url'
+  text?: string
+  mimeType?: string
+  data?: string
+  url?: string
+}
+
 export interface Message {
   id: string
   conversation_id: string
   execution_id: string | null
   role: 'user' | 'assistant' | 'tool'
-  content: string | null
+  content: string | MessagePart[] | null
   tool_calls: any[] | null
   tool_name: string | null
   tool_result: any | null

@@ -8,7 +8,8 @@ import type {
   ChatResponse,
   OrgMember,
   Organization,
-  OrgInvite
+  OrgInvite,
+  MessagePart
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -119,11 +120,11 @@ export async function deleteAgent(agentId: string): Promise<{ success: boolean }
 // ---- Chat / Interaction ----
 
 export async function chatWithAgent(
-  prompt: string,
+  prompt: string | MessagePart[],
   agentId?: string,
   customerId?: string,
   conversationId?: string,
-  history?: { role: 'user' | 'assistant' | 'tool'; content?: string; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[]
+  history?: { role: 'user' | 'assistant' | 'tool'; content?: string | MessagePart[] | null; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[]
 ): Promise<ChatResponse> {
   return apiFetch<ChatResponse>("/agent", {
     method: "POST",

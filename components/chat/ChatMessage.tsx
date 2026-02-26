@@ -6,10 +6,11 @@ import remarkGfm from "remark-gfm"
 import { IconMessageChatbot, IconUser } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { ToolCallList, type ToolCall } from "./ToolCallIndicator"
+import type { MessagePart } from "@/lib/types"
 
 export interface ChatMessageProps {
   role: 'user' | 'assistant' | 'tool'
-  content: string
+  content: string | MessagePart[]
   timestamp?: number
   toolCalls?: ToolCall[]
   isStreaming?: boolean
@@ -24,13 +25,20 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const isUser = role === 'user'
 
-  // Sometimes the backend sends unparsed BROADCAST tags if an error happens or extraction fails.
-  // We double-check and strip it on the frontend to ensure robust rendering.
-  const displayContent = React.useMemo(() => {
-    if (isUser || !content) return content
-    const match = content.match(/\[BROADCAST\]([\s\S]*?)\[\/BROADCAST\]/)
-    if (match) return (match[1] || '').trim()
-    return content.replace(/\[\/?BROADCAST\]/g, '').trim()
+  const { text, images } = React.useMemo(() => {
+    if (!content) return { text: '', images: [] }
+    if (typeof content === 'string') {
+      // Handle BROADCAST tags for string content
+      if (isUser) return { text: content, images: [] }
+      const match = content.match(/\[BROADCAST\]([\s\S]*?)\[\/BROADCAST\]/)
+      if (match) return { text: (match[1] || '').trim(), images: [] }
+      return { text: content.replace(/\[\/?BROADCAST\]/g, '').trim(), images: [] }
+    }
+    
+    // Handle MessagePart[]
+    const textParts = content.filter(p => p.type === 'text').map(p => (p as any).text).join('\n')
+    const imageParts = content.filter(p => p.type === 'image' || p.type === 'image_url')
+    return { text: textParts, images: imageParts }
   }, [content, isUser])
 
   return (
@@ -61,7 +69,29 @@ export function ChatMessage({
           isUser ? "items-end" : "items-start"
         )}
       >
-        {(displayContent || isStreaming) && (
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-1">
+            {images.map((img, i) => (
+              <div key={i} className="relative rounded-md overflow-hidden border bg-background max-w-[200px]">
+                {img.type === 'image' ? (
+                  <img 
+                    src={`data:${img.mimeType};base64,${img.data}`} 
+                    alt="attachment" 
+                    className="max-h-60 object-contain"
+                  />
+                ) : (
+                  <img 
+                    src={(img as any).url} 
+                    alt="attachment" 
+                    className="max-h-60 object-contain"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(text || isStreaming) && (
           <div
             className={cn(
               "px-3 py-2 rounded-2xl text-sm leading-relaxed",
@@ -71,11 +101,11 @@ export function ChatMessage({
             )}
           >
             {isUser ? (
-              <div className="whitespace-pre-wrap">{displayContent}</div>
+              <div className="whitespace-pre-wrap">{text}</div>
             ) : (
               <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1 prose-pre:my-1 prose-code:before:content-none prose-code:after:content-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {displayContent}
+                  {text}
                 </ReactMarkdown>
                 {isStreaming && (
                   <span className="inline-block w-1.5 h-4 bg-primary ml-0.5 animate-pulse" />

@@ -41,11 +41,14 @@ export function UniversalChat({
     isLoading,
     queuedMessages,
     pendingNavigation,
+    attachments,
     toggleOpen,
     setOpen,
     toggleFullscreen,
     setSize,
     sendMessage,
+    addAttachment,
+    removeAttachment,
     removeQueuedMessage,
     startNewChat,
     clearPendingNavigation,
@@ -76,7 +79,6 @@ export function UniversalChat({
   }, [isOpen, isNarrow])
 
   const [input, setInput] = React.useState("")
-  const [attachments, setAttachments] = React.useState<File[]>([])
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
@@ -119,10 +121,10 @@ export function UniversalChat({
   }, [isOpen, conversationId])
 
   const handleSend = async () => {
-    if (!input.trim()) return
+    if (!input.trim() && attachments.length === 0) return
     const content = input
     setInput("")
-    setAttachments([])
+    // Attachments are cleared in store.sendMessage
     await sendMessage(content)
     
     // Refocus the input after sending (in case they clicked the send button)
@@ -148,11 +150,9 @@ export function UniversalChat({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    setAttachments((prev) => [...prev, ...files])
-  }
-
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
+    files.forEach(file => addAttachment(file))
+    // Reset input value so same file can be selected again if needed
+    e.target.value = ''
   }
 
   const chatContent = (
@@ -304,16 +304,15 @@ export function UniversalChat({
 
       {attachments.length > 0 && (
         <div className="px-3 py-2 border-t bg-muted/30 flex flex-wrap gap-2">
-          {attachments.map((file, i) => (
+          {attachments.map((att) => (
             <div
-              key={i}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border text-xs"
+              key={att.id}
+              className="relative group size-16 rounded-md overflow-hidden border bg-background"
             >
-              <IconPaperclip className="size-3" />
-              <span className="truncate max-w-[100px]">{file.name}</span>
+              <img src={att.previewUrl} alt="attachment" className="size-full object-cover" />
               <button
-                onClick={() => removeAttachment(i)}
-                className="text-muted-foreground hover:text-foreground"
+                onClick={() => removeAttachment(att.id)}
+                className="absolute top-0.5 right-0.5 size-4 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <IconX className="size-3" />
               </button>
@@ -330,7 +329,9 @@ export function UniversalChat({
                 key={qm.id}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs max-w-full"
               >
-                <span className="truncate">{qm.content}</span>
+                <span className="truncate">
+                  {typeof qm.content === 'string' ? qm.content : '[Multimodal Message]'}
+                </span>
                 <button
                   onClick={() => removeQueuedMessage(qm.id)}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
@@ -342,17 +343,16 @@ export function UniversalChat({
           </div>
         )}
         <div className="flex items-end gap-2 bg-background border rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-primary">
-          {showAttachments && (
-            <label className="cursor-pointer p-1.5 hover:bg-muted rounded-md">
-              <IconPaperclip className="size-4 text-muted-foreground" />
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-            </label>
-          )}
+          <label className="cursor-pointer p-1.5 hover:bg-muted rounded-md transition-colors" title="Attach image">
+            <IconPaperclip className="size-4 text-muted-foreground" />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </label>
           <textarea
             ref={textareaRef}
             value={input}
@@ -366,7 +366,7 @@ export function UniversalChat({
             size="icon"
             className="size-8 rounded-lg"
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() && attachments.length === 0}
           >
             <IconSend className="size-4" />
           </Button>

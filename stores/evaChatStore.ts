@@ -2,18 +2,26 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { chatWithAgent, fetchMessages, createConversation } from '@/lib/api-client'
 import { useConversationsStore } from './conversationsStore'
+import type { MessagePart } from '@/lib/types'
+
+export interface Attachment {
+  id: string
+  file: File
+  previewUrl: string
+  type: 'image'
+}
 
 export interface EvaMessage {
   id: string
   role: 'user' | 'assistant' | 'tool'
-  content: string
+  content: string | MessagePart[]
   timestamp: number
   toolCalls?: { name: string; args: any; result?: any; status: 'pending' | 'running' | 'completed' | 'error' }[]
 }
 
 export interface QueuedMessage {
   id: string
-  content: string
+  content: string | MessagePart[]
 }
 
 interface EvaChatState {
@@ -25,6 +33,8 @@ interface EvaChatState {
   queuedMessages: QueuedMessage[]
   error: string | null
   pendingNavigation: { view: string; agentId?: string } | null
+  attachments: Attachment[]
+  size: { width: number; height: number }
 
   toggleOpen: () => void
   setOpen: (open: boolean) => void
@@ -32,6 +42,9 @@ interface EvaChatState {
   toggleFullscreen: () => void
   setSize: (size: { width: number; height: number }) => void
   sendMessage: (content: string) => Promise<void>
+  addAttachment: (file: File) => void
+  removeAttachment: (id: string) => void
+  clearAttachments: () => void
   removeQueuedMessage: (id: string) => void
   startNewChat: () => void
   loadConversation: (conversationId: string, messages: EvaMessage[]) => void
@@ -40,6 +53,21 @@ interface EvaChatState {
 }
 
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+// Helper to convert File to Base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => {
+      const result = reader.result as string
+      // Remove data:image/xxx;base64, prefix
+      const base64 = result.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = error => reject(error)
+  })
+}
 
 const useEvaChatStore = create<EvaChatState>()(
   persist(
@@ -52,6 +80,7 @@ const useEvaChatStore = create<EvaChatState>()(
       queuedMessages: [],
       error: null,
       pendingNavigation: null,
+      attachments: [],
       size: { width: 380, height: 520 },
 
       toggleOpen: () => {
@@ -74,6 +103,31 @@ const useEvaChatStore = create<EvaChatState>()(
         set({ size })
       },
 
+      addAttachment: (file: File) => {
+        const id = generateId()
+        const previewUrl = URL.createObjectURL(file)
+        set(state => ({
+          attachments: [...state.attachments, { id, file, previewUrl, type: 'image' }]
+        }))
+      },
+
+      removeAttachment: (id: string) => {
+        set(state => {
+          const attachment = state.attachments.find(a => a.id === id)
+          if (attachment) URL.revokeObjectURL(attachment.previewUrl)
+          return {
+            attachments: state.attachments.filter(a => a.id !== id)
+          }
+        })
+      },
+
+      clearAttachments: () => {
+        set(state => {
+          state.attachments.forEach(a => URL.revokeObjectURL(a.previewUrl))
+          return { attachments: [] }
+        })
+      },
+
       removeQueuedMessage: (id: string) => {
         set((state) => ({
           queuedMessages: state.queuedMessages.filter((m) => m.id !== id),
@@ -81,19 +135,46 @@ const useEvaChatStore = create<EvaChatState>()(
       },
 
       sendMessage: async (content: string) => {
-        if (!content.trim()) return
+        if (!content.trim() && get().attachments.length === 0) return
 
         const trimmed = content.trim()
+        const currentAttachments = get().attachments
+
+        // Prepare message content (string or MessagePart[])
+        let messageContent: string | MessagePart[] = trimmed
+        if (currentAttachments.length > 0) {
+          const parts: MessagePart[] = []
+          if (trimmed) {
+            parts.push({ type: 'text', text: trimmed })
+          }
+          
+          for (const att of currentAttachments) {
+            try {
+              const base64 = await fileToBase64(att.file)
+              parts.push({
+                type: 'image',
+                mimeType: att.file.type,
+                data: base64
+              })
+            } catch (err) {
+              console.error('Failed to convert image to base64', err)
+            }
+          }
+          messageContent = parts
+        }
+
+        // Clear attachments immediately so UI resets
+        get().clearAttachments()
 
         if (get().isLoading) {
-          const queued: QueuedMessage = { id: generateId(), content: trimmed }
+          const queued: QueuedMessage = { id: generateId(), content: messageContent }
           set((state) => ({
             queuedMessages: [...state.queuedMessages, queued],
           }))
           return
         }
 
-        await processMessage(trimmed, set, get)
+        await processMessage(messageContent, set, get)
       },
 
       startNewChat: () => {
@@ -102,6 +183,7 @@ const useEvaChatStore = create<EvaChatState>()(
           messages: [],
           queuedMessages: [],
           error: null,
+          attachments: [],
         })
       },
 
@@ -142,7 +224,8 @@ const useEvaChatStore = create<EvaChatState>()(
         conversationId: state.conversationId,
         messages: state.messages,
         size: state.size,
-        // isFullscreen is NOT persisted — defaults to bubble on fresh load
+        // isFullscreen is NOT persisted
+        // attachments are NOT persisted (transient)
       }),
     }
   )
@@ -150,7 +233,7 @@ const useEvaChatStore = create<EvaChatState>()(
 
 /** Send a message and then drain the queue */
 async function processMessage(
-  content: string,
+  content: string | MessagePart[],
   set: (fn: (state: EvaChatState) => Partial<EvaChatState>) => void,
   get: () => EvaChatState
 ) {
@@ -177,7 +260,7 @@ async function processMessage(
       set(() => ({ conversationId: conversation.id }))
     }
 
-    let history: { role: 'user' | 'assistant' | 'tool'; content?: string; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[] | undefined
+    let history: { role: 'user' | 'assistant' | 'tool'; content?: string | MessagePart[] | null; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[] | undefined
     if (!hadConversationId) {
       const existingMessages = get().messages.slice(0, -1)
       history = []
