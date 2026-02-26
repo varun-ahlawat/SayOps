@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconBrandGoogle, IconBrandGoogleHome, IconPlug } from "@tabler/icons-react"
+import { IconBrandGoogle, IconBrandGoogleHome, IconPlug, IconBrandMessenger, IconBrandWhatsapp, IconBrandTelegram } from "@tabler/icons-react"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/use-toast"
 
@@ -140,6 +140,9 @@ export function IntegrationsPanel() {
       case "google": return <IconBrandGoogle className="size-8" />
       case "gmail": return <IconBrandGoogleHome className="size-8" />
       case "hubspot": return <IconPlug className="size-8 text-orange-500" />
+      case "facebook": return <IconBrandMessenger className="size-8 text-blue-500" />
+      case "whatsapp": return <IconBrandWhatsapp className="size-8 text-green-500" />
+      case "telegram": return <IconBrandTelegram className="size-8 text-sky-500" />
       default: return <IconBrandGoogle className="size-8" />
     }
   }
