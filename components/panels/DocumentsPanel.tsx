@@ -219,13 +219,13 @@ export function DocumentsPanel() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 lg:p-8">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
           <p className="text-muted-foreground mt-1">Upload documents to train your AI agents on your business data.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <input
             type="file"
             id="file-upload-panel"
@@ -234,8 +234,8 @@ export function DocumentsPanel() {
             accept=".pdf,.txt,.doc,.docx"
             onChange={handleFileUpload}
           />
-          <Button asChild>
-            <label htmlFor="file-upload-panel" className="cursor-pointer gap-2">
+          <Button asChild className="w-full sm:w-auto">
+            <label htmlFor="file-upload-panel" className="cursor-pointer gap-2 justify-center">
               <IconPlus className="size-4" />
               Add Documents
             </label>

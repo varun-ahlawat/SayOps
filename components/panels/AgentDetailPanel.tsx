@@ -57,7 +57,7 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
   }
 
   return (
-    <div className="flex flex-col h-full space-y-6 p-8">
+    <div className="flex flex-col h-full space-y-6 p-4 md:p-8">
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{agent.name}</h2>

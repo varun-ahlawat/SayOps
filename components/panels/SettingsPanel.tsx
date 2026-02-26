@@ -99,7 +99,7 @@ export function SettingsPanel() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form onSubmit={handleSendInvite} className="flex gap-2">
+            <form onSubmit={handleSendInvite} className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1 space-y-1">
                 <Label htmlFor="settings-email" className="sr-only">Email Address</Label>
                 <Input
@@ -126,8 +126,8 @@ export function SettingsPanel() {
               ) : (
                 <div className="divide-y rounded-lg border">
                   {invites.map((invite) => (
-                    <div key={invite.id} className="flex items-center justify-between p-4 bg-muted/10">
-                      <div className="flex items-center gap-3">
+                    <div key={invite.id} className="flex items-center justify-between gap-2 flex-wrap p-4 bg-muted/10">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
                           <IconMail className="size-4 text-primary" />
                         </div>
@@ -152,8 +152,8 @@ export function SettingsPanel() {
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Active Members</h3>
                   <div className="divide-y rounded-lg border">
                     {members.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
+                      <div key={member.id} className="flex items-center justify-between gap-2 flex-wrap p-4">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <IconUsers className="size-4 text-primary" />
                           </div>

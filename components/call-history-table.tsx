@@ -186,6 +186,7 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
             No call history yet. Calls will appear here once your agents start handling them.
           </p>
         ) : (
+          <div className="overflow-x-auto">
           <ScrollArea className="w-full">
             <Table>
               <TableHeader>
@@ -204,6 +205,7 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
               </TableBody>
             </Table>
           </ScrollArea>
+          </div>
         )}
       </CardContent>
     </Card>
