@@ -42,6 +42,22 @@ const AVAILABLE_INTEGRATIONS = [
     connectProvider: 'facebook' as const,
     comingSoon: false,
   },
+  {
+    provider: 'whatsapp',
+    label: 'WhatsApp',
+    description: 'Chat with customers on WhatsApp.',
+    icon: 'whatsapp',
+    connectProvider: 'whatsapp' as const,
+    comingSoon: false,
+  },
+  {
+    provider: 'telegram',
+    label: 'Telegram',
+    description: 'Chat with customers on Telegram.',
+    icon: 'telegram',
+    connectProvider: 'telegram' as const,
+    comingSoon: false,
+  },
 ]
 
 export function IntegrationsPanel() {
