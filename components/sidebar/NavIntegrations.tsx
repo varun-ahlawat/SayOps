@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { IconPlug, IconPlus } from "@tabler/icons-react"
-import Link from "next/link"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -11,6 +10,7 @@ import {
 import { NavSection } from "./NavSection"
 import { useAuth } from "@/lib/auth-context"
 import { fetchIntegrations } from "@/lib/api-client"
+import { useViewParams } from "@/hooks/useViewParams"
 
 interface IntegrationStatus {
   provider: string
@@ -24,6 +24,7 @@ const KNOWN_INTEGRATIONS = [
 
 export function NavIntegrations() {
   const { user } = useAuth()
+  const { setView } = useViewParams()
   const [connected, setConnected] = React.useState<Record<string, IntegrationStatus>>({})
   const [loaded, setLoaded] = React.useState(false)
 
@@ -44,13 +45,11 @@ export function NavIntegrations() {
   const getStatusDot = (provider: string) => {
     const integration = connected[provider]
     if (!integration) {
-      // Never connected
       return <span className="size-2 rounded-full bg-muted-foreground/40 shrink-0" />
     }
     if (integration.status === 'active') {
       return <span className="size-2 rounded-full bg-green-500 shrink-0" />
     }
-    // Connected but inactive/paused
     return <span className="size-2 rounded-full bg-red-500 shrink-0" />
   }
 
@@ -61,23 +60,21 @@ export function NavIntegrations() {
       icon={<IconPlug className="size-4" />}
       defaultOpen={false}
       headerAction={
-        <Link
-          href="/integrations"
+        <button
+          onClick={() => setView("integrations")}
           className="text-muted-foreground hover:text-foreground"
           title="Manage Integrations"
         >
           <IconPlus className="size-4" />
-        </Link>
+        </button>
       }
     >
       <SidebarMenu>
         {KNOWN_INTEGRATIONS.map((integration) => (
           <SidebarMenuItem key={integration.provider}>
-            <SidebarMenuButton asChild>
-              <Link href="/integrations" className="flex items-center gap-2">
-                {getStatusDot(integration.provider)}
-                <span className="truncate">{integration.label}</span>
-              </Link>
+            <SidebarMenuButton onClick={() => setView("integrations")}>
+              {getStatusDot(integration.provider)}
+              <span className="truncate">{integration.label}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}

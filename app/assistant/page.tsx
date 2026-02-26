@@ -6,7 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { useAuth } from "@/lib/auth-context"
-import { fetchConversations, chatWithAgent } from "@/lib/api-client"
+import { fetchConversations, chatWithAgent, createConversation } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconMessageChatbot, IconPlus, IconArrowRight } from "@tabler/icons-react"
@@ -42,10 +42,9 @@ export default function AssistantPage() {
 
   const startNewSession = async () => {
     try {
-      // Chatting with super agent without an ID creates a new one or resumes active
-      // For a "Strategy Session", we'll just go to a new blank state
-      const res = await chatWithAgent("Let's start a new strategy session.", "super")
-      router.push(`/assistant/${res.sessionID}`)
+      // Explicitly create a fresh Eva conversation for a new strategy session
+      const conversation = await createConversation("super", "new")
+      router.push(`/assistant/${conversation.id}`)
     } catch (err) {
       console.error("Failed to start session:", err)
     }

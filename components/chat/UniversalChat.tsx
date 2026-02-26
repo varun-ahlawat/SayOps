@@ -1,13 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import {
   IconMessageChatbot,
   IconX,
   IconMaximize,
   IconMinimize,
-  IconResize,
   IconSend,
   IconPlus,
   IconLoader2,
@@ -20,47 +18,42 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, getChatSummary } from "@/lib/utils"
-import { ChatMessage, type ChatMessageProps } from "./ChatMessage"
-import { useEvaChatStore, useConversationsStore, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT } from "@/stores"
+import { ChatMessage } from "./ChatMessage"
+import { useEvaChatStore, useConversationsStore } from "@/stores"
+import { useViewParams } from "@/hooks/useViewParams"
 
 export interface UniversalChatProps {
-  mode: 'overlay' | 'fullscreen'
-  conversationId?: string
-  initialMessages?: ChatMessageProps[]
-  onSendMessage?: (content: string) => Promise<void>
   title?: string
   subtitle?: string
   showAttachments?: boolean
 }
 
 export function UniversalChat({
-  mode,
-  conversationId: propConversationId,
-  initialMessages,
-  onSendMessage,
   title = "Eva",
   subtitle = "Your Personal Assistant",
   showAttachments = false,
 }: UniversalChatProps) {
-  const router = useRouter()
   const {
     isOpen,
-    size,
-    conversationId: storeConversationId,
-    messages: storeMessages,
+    isFullscreen,
+    conversationId,
+    messages,
     isLoading,
     queuedMessages,
     pendingNavigation,
     toggleOpen,
     setOpen,
+    toggleFullscreen,
     setSize,
-    sendMessage: storeSendMessage,
+    sendMessage,
     removeQueuedMessage,
     startNewChat,
     clearPendingNavigation,
     loadConversationFromDB,
+    size,
   } = useEvaChatStore()
 
+  const { setView } = useViewParams()
   const { evaConversations, fetchEvaConversations } = useConversationsStore()
   const [historyOpen, setHistoryOpen] = React.useState(false)
 
@@ -68,38 +61,23 @@ export function UniversalChat({
   const [attachments, setAttachments] = React.useState<File[]>([])
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
-  const resizeRef = React.useRef<{
-    startX: number
-    startY: number
-    startWidth: number
-    startHeight: number
-  } | null>(null)
-
-  const isFullscreen = mode === 'fullscreen'
-  const messages = isFullscreen && initialMessages ? initialMessages : storeMessages
-  const conversationId = propConversationId || storeConversationId
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Handle navigate_to_page tool calls
+  // Handle navigate_to_page tool calls — use setView instead of router.push
   React.useEffect(() => {
     if (!pendingNavigation) return
-    const { page, agentId } = pendingNavigation
-    const routes: Record<string, string> = {
-      dashboard: '/dashboard',
-      agents: '/agents',
-      agent_settings: agentId ? `/agents/${agentId}/settings` : '/agents',
-      documents: '/documents',
-      integrations: '/integrations',
-      chat_history: agentId ? `/history?agentId=${agentId}` : '/history',
-      settings: '/settings',
-    }
-    const route = routes[page] || '/'
-    router.push(route)
+    const { view, agentId } = pendingNavigation
+    
+    // view is now exactly the view string ('dashboard', 'agent', etc.)
+    const targetView = view as any
+    const params = agentId ? { agentId } : undefined
+    
+    setView(targetView, params)
     clearPendingNavigation()
-  }, [pendingNavigation, router, clearPendingNavigation])
+  }, [pendingNavigation, setView, clearPendingNavigation])
 
   // Auto-resize textarea to fit content
   const autoResize = React.useCallback(() => {
@@ -113,17 +91,26 @@ export function UniversalChat({
     autoResize()
   }, [input, autoResize])
 
+  // Focus the input when the chat opens or switches conversations
+  React.useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 50)
+    }
+  }, [isOpen, conversationId])
+
   const handleSend = async () => {
     if (!input.trim()) return
     const content = input
     setInput("")
     setAttachments([])
-
-    if (onSendMessage) {
-      await onSendMessage(content)
-    } else {
-      await storeSendMessage(content)
-    }
+    await sendMessage(content)
+    
+    // Refocus the input after sending (in case they clicked the send button)
+    setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 0)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -133,52 +120,12 @@ export function UniversalChat({
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isFullscreen) return
-    e.preventDefault()
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startWidth: size.width,
-      startHeight: size.height,
-    }
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-  }
-
-  const handleMouseMove = React.useCallback((e: MouseEvent) => {
-    if (!resizeRef.current) return
-    const deltaX = resizeRef.current.startX - e.clientX
-    const deltaY = resizeRef.current.startY - e.clientY
-
-    setSize(
-      resizeRef.current.startWidth + deltaX,
-      resizeRef.current.startHeight + deltaY
-    )
-  }, [setSize])
-
-  const handleMouseUp = React.useCallback(() => {
-    resizeRef.current = null
-    document.removeEventListener("mousemove", handleMouseMove)
-    document.removeEventListener("mouseup", handleMouseUp)
-  }, [handleMouseMove])
-
   const handleNewChat = () => {
-    if (isFullscreen) {
-      router.push("/chat/new")
-    } else {
-      startNewChat()
-    }
+    startNewChat()
   }
 
   const handleToggleFullscreen = () => {
-    if (isFullscreen) {
-      router.back()
-    } else if (messages.length > 0) {
-      router.push(`/chat/${conversationId || "new"}`)
-    } else {
-      router.push("/chat/new")
-    }
+    toggleFullscreen()
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,16 +210,19 @@ export function UniversalChat({
               <IconMaximize className="size-4" />
             )}
           </Button>
-          {!isFullscreen && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-primary-foreground hover:bg-primary-foreground/20"
-              onClick={() => setOpen(false)}
-            >
-              <IconX className="size-4" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-primary-foreground hover:bg-primary-foreground/20"
+            onClick={() => {
+              if (isFullscreen) {
+                toggleFullscreen()
+              }
+              setOpen(false)
+            }}
+          >
+            <IconX className="size-4" />
+          </Button>
         </div>
       </div>
 
@@ -311,7 +261,7 @@ export function UniversalChat({
           <div className="space-y-4">
             {messages.map((msg, i) => (
               <ChatMessage
-                key={`${(msg as any).id || msg.timestamp || 'msg'}-${i}`}
+                key={`${msg.id || msg.timestamp || 'msg'}-${i}`}
                 role={msg.role}
                 content={msg.content}
                 timestamp={msg.timestamp}
@@ -407,6 +357,43 @@ export function UniversalChat({
     </>
   )
 
+  const resizeRef = React.useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: size.width,
+      startHeight: size.height,
+    }
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+  }
+
+  const handleMouseMove = React.useCallback(
+    (e: MouseEvent) => {
+      if (!resizeRef.current) return
+      
+      // Top-left drag means mouse moving LEFT increases width, moving UP increases height
+      const deltaX = resizeRef.current.startX - e.clientX
+      const deltaY = resizeRef.current.startY - e.clientY
+      
+      const newWidth = Math.max(320, Math.min(resizeRef.current.startWidth + deltaX, window.innerWidth - 48))
+      const newHeight = Math.max(400, Math.min(resizeRef.current.startHeight + deltaY, window.innerHeight - 120))
+      
+      setSize({ width: newWidth, height: newHeight })
+    },
+    [setSize]
+  )
+
+  const handleMouseUp = React.useCallback(() => {
+    resizeRef.current = null
+    document.removeEventListener("mousemove", handleMouseMove)
+    document.removeEventListener("mouseup", handleMouseUp)
+  }, [handleMouseMove])
+
+  // Fullscreen mode — rendered by PersistentEva in a fixed overlay
   if (isFullscreen) {
     return (
       <div className="flex flex-col h-full bg-background">
@@ -415,6 +402,7 @@ export function UniversalChat({
     )
   }
 
+  // Collapsed bubble button
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50">
@@ -432,20 +420,19 @@ export function UniversalChat({
     )
   }
 
+  // Open bubble widget
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
       <div
         className={cn(
-          "flex flex-col rounded-xl border bg-background shadow-2xl overflow-hidden border-primary/20"
+          "flex flex-col rounded-xl border bg-background shadow-2xl overflow-hidden border-primary/20 relative"
         )}
         style={{ width: size.width, height: size.height }}
       >
         <div
-          className="absolute top-0 left-0 p-1.5 cursor-nw-resize opacity-50 hover:opacity-100 z-10"
+          className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-50 rounded-tl-xl hover:bg-primary/20 transition-colors"
           onMouseDown={handleMouseDown}
-        >
-          <IconResize className="size-4 text-muted-foreground -rotate-45" />
-        </div>
+        />
         {chatContent}
       </div>
 

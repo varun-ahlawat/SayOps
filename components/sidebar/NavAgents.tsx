@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { IconRobot, IconPlus } from "@tabler/icons-react"
-import Link from "next/link"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -10,6 +9,7 @@ import {
 } from "@/components/ui/sidebar"
 import { NavSection } from "./NavSection"
 import { useSidebarStore } from "@/stores"
+import { useViewParams } from "@/hooks/useViewParams"
 
 interface Agent {
   id: string
@@ -19,6 +19,7 @@ interface Agent {
 
 export function NavAgents({ agents }: { agents: Agent[] }) {
   const { sections } = useSidebarStore()
+  const { setView } = useViewParams()
   const searchQuery = sections.agents?.searchQuery || ""
 
   const filteredAgents = React.useMemo(() => {
@@ -36,23 +37,21 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
       showSearch
       searchPlaceholder="Search agents..."
       headerAction={
-        <Link
-          href="/create-agent"
+        <button
+          onClick={() => setView("create-agent")}
           className="text-muted-foreground hover:text-foreground"
           title="Create Agent"
         >
           <IconPlus className="size-4" />
-        </Link>
+        </button>
       }
     >
       <SidebarMenu>
         {filteredAgents.map((agent) => (
           <SidebarMenuItem key={agent.id}>
-            <SidebarMenuButton asChild>
-              <Link href={`/agents/${agent.id}`}>
-                <IconRobot className="size-4" />
-                <span className="truncate">{agent.name}</span>
-              </Link>
+            <SidebarMenuButton onClick={() => setView("agent", { agentId: agent.id })}>
+              <IconRobot className="size-4" />
+              <span className="truncate">{agent.name}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}

@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
-import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -17,8 +16,7 @@ interface TestMessage {
   toolCalls?: { name: string; args: any }[]
 }
 
-export function TestModeSimulator() {
-  const { agentId } = useParams()
+export function TestModeSimulator({ agentId }: { agentId: string }) {
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<TestMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -26,13 +24,14 @@ export function TestModeSimulator() {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const loadConversations = useCallback(async () => {
-    if (!agentId) return
+    if (!agentId) return []
     try {
-      const convs = await fetchConversations(agentId as string, 'me')
+      const convs = await fetchConversations(agentId, 'me')
       setConversations(convs)
-      return convs
+      return convs || []
     } catch (err) {
       console.error("Failed to fetch test conversations:", err)
       return []
@@ -49,9 +48,10 @@ export function TestModeSimulator() {
     setIsInitializing(true)
     try {
       const msgs = await fetchMessages(convId)
-      setMessages(msgs.map(m => ({
+      const filteredMsgs = msgs.filter(m => m.role !== 'tool')
+      setMessages(filteredMsgs.map(m => ({
         role: m.role as 'user' | 'assistant',
-        content: m.content || (m.tool_result ? `Ran tool: ${m.tool_name}` : ""),
+        content: m.content || "",
         toolCalls: m.tool_calls || undefined
       })))
     } catch (err) {
@@ -90,11 +90,11 @@ export function TestModeSimulator() {
     setIsLoading(true)
 
     try {
-      const response = await chatWithAgent(userMsg.content, agentId as string, undefined, conversationId || undefined)
+      const response = await chatWithAgent(userMsg.content, agentId, undefined, conversationId || undefined)
       
       const assistantMsg: TestMessage = {
         role: 'assistant',
-        content: response.output,
+        content: response.broadcast || response.output,
         toolCalls: response.toolCalls
       }
       setMessages(prev => [...prev, assistantMsg])

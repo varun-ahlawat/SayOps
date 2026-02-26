@@ -1,19 +1,17 @@
-import { useRouter } from 'next/navigation'
 import { useEvaChatStore, type EvaMessage } from '@/stores'
 
 export type { EvaMessage }
 
 export function useEvaChat() {
-  const router = useRouter()
   const {
     isOpen,
     setOpen: setIsOpen,
-    size,
-    setSize: resize,
+    isFullscreen,
     conversationId,
     messages,
     isLoading,
     toggleOpen,
+    toggleFullscreen,
     sendMessage: storeSendMessage,
     startNewChat,
   } = useEvaChatStore()
@@ -25,9 +23,9 @@ export function useEvaChat() {
   return {
     isOpen,
     setIsOpen,
-    size,
-    resize,
+    isFullscreen,
     toggleOpen,
+    toggleFullscreen,
     conversationId,
     messages,
     isLoading,

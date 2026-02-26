@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { IconMessage, IconPlus } from "@tabler/icons-react"
-import Link from "next/link"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -12,6 +11,7 @@ import { NavSection } from "./NavSection"
 import { useSidebarStore, useConversationsStore } from "@/stores"
 import { useAuth } from "@/lib/auth-context"
 import { getChatSummary } from "@/lib/utils"
+import { useEvaChatStore } from "@/stores/evaChatStore"
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -28,7 +28,7 @@ function formatRelativeDate(dateStr: string): string {
 export function NavChatHistory() {
   const { user } = useAuth()
   const { sections } = useSidebarStore()
-  const { evaConversations, fetchEvaConversations, loading } = useConversationsStore()
+  const { evaConversations, fetchEvaConversations, loading, error } = useConversationsStore()
   const searchQuery = sections.evaChat?.searchQuery || ""
 
   React.useEffect(() => {
@@ -46,6 +46,18 @@ export function NavChatHistory() {
 
   const displayConversations = filteredConversations.slice(0, 5)
 
+  const handleOpenChat = (chatId: string) => {
+    const store = useEvaChatStore.getState()
+    store.loadConversationFromDB(chatId)
+    store.setOpen(true)
+  }
+
+  const handleNewChat = () => {
+    const store = useEvaChatStore.getState()
+    store.startNewChat()
+    store.setOpen(true)
+  }
+
   return (
     <NavSection
       id="evaChat"
@@ -54,13 +66,13 @@ export function NavChatHistory() {
       showSearch
       searchPlaceholder="Search chats..."
       headerAction={
-        <Link
-          href="/chat/new"
+        <button
+          onClick={handleNewChat}
           className="text-muted-foreground hover:text-foreground"
           title="New Chat"
         >
           <IconPlus className="size-4" />
-        </Link>
+        </button>
       }
     >
       <SidebarMenu>
@@ -68,19 +80,26 @@ export function NavChatHistory() {
           <SidebarMenuItem>
             <span className="text-xs text-muted-foreground px-2">Loading...</span>
           </SidebarMenuItem>
+        ) : error ? (
+          <SidebarMenuItem>
+            <button
+              onClick={() => fetchEvaConversations()}
+              className="text-xs text-red-500 px-2 hover:underline cursor-pointer"
+            >
+              Failed to load. Tap to retry.
+            </button>
+          </SidebarMenuItem>
         ) : displayConversations.length > 0 ? (
           displayConversations.map((chat) => (
             <SidebarMenuItem key={chat.id}>
-              <SidebarMenuButton asChild>
-                <Link href={`/chat/${chat.id}`}>
-                  <IconMessage className="size-4 text-muted-foreground" />
-                  <span className="truncate flex-1">
-                    {getChatSummary(chat.metadata, "Eva Chat")}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground ml-auto">
-                    {formatRelativeDate(chat.started_at)}
-                  </span>
-                </Link>
+              <SidebarMenuButton onClick={() => handleOpenChat(chat.id)}>
+                <IconMessage className="size-4 text-muted-foreground" />
+                <span className="truncate flex-1">
+                  {getChatSummary(chat.metadata, "Eva Chat")}
+                </span>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {formatRelativeDate(chat.started_at)}
+                </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))

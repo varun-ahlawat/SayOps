@@ -1,39 +1,47 @@
 "use client"
 
 import * as React from "react"
-import { useParams, useRouter } from "next/navigation"
 import { fetchAgent } from "@/lib/api-client"
 import { AgentSettingsForm } from "@/components/agent/AgentSettingsForm"
 import { TestModeSimulator } from "@/components/agent/TestModeSimulator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Spinner } from "@/components/ui/spinner"
-import { useAuth } from "@/lib/auth-context"
+import { useViewParams } from "@/hooks/useViewParams"
 import { Agent } from "@/lib/types"
 
-export default function AgentPage() {
-  const { agentId } = useParams()
-  const router = useRouter()
-  const { user } = useAuth()
+interface AgentDetailPanelProps {
+  agentId: string | null
+}
+
+export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
+  const { setView } = useViewParams()
   const [agent, setAgent] = React.useState<Agent | null>(null)
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
-    if (!user || !agentId) return
+    if (!agentId) return
 
-    fetchAgent(agentId as string)
-      .then((data) => {
-        setAgent(data)
-      })
+    setLoading(true)
+    fetchAgent(agentId)
+      .then((data) => setAgent(data))
       .catch((err) => {
         console.error("Failed to fetch agent:", err)
-        router.push("/agents")
+        setView("dashboard")
       })
       .finally(() => setLoading(false))
-  }, [user, agentId, router])
+  }, [agentId, setView])
+
+  if (!agentId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-muted-foreground">No agent selected.</p>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Spinner className="size-8" />
       </div>
     )
@@ -41,9 +49,9 @@ export default function AgentPage() {
 
   if (!agent) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <p className="text-muted-foreground">Agent not found.</p>
-        <button onClick={() => router.push("/agents")}>Go Back</button>
+        <button onClick={() => setView("dashboard")}>Go Back</button>
       </div>
     )
   }
@@ -67,7 +75,7 @@ export default function AgentPage() {
           <AgentSettingsForm agent={agent} />
         </TabsContent>
         <TabsContent value="test" className="space-y-4">
-          <TestModeSimulator />
+          <TestModeSimulator agentId={agent.id} />
         </TabsContent>
       </Tabs>
     </div>

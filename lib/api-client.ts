@@ -187,6 +187,16 @@ export async function deleteDocument(documentId: string): Promise<void> {
   })
 }
 
+export async function getDocumentUrl(docId: string): Promise<string> {
+  const res = await apiFetch<{ url: string }>(`/upload/${docId}`)
+  return res.url
+}
+
+export async function getDocumentStatus(docId: string): Promise<string> {
+  const res = await apiFetch<{ status: string }>(`/upload/${docId}/status`)
+  return res.status
+}
+
 export async function fetchOrgMembers(): Promise<OrgMember[]> {
   const res = await apiFetch<OrgMember[]>("/org/members")
   return res
@@ -239,6 +249,14 @@ export async function fetchEvaConversations(): Promise<Conversation[]> {
     }
     return c
   })
+}
+
+export async function createConversation(agentId: string, mode: 'new' | 'reuse' = 'new'): Promise<Conversation> {
+  const res = await apiFetch<{ conversation: Conversation }>("/conversations", {
+    method: "POST",
+    body: JSON.stringify({ agentId, mode }),
+  })
+  return res.conversation
 }
 
 export async function fetchMessages(conversationId: string): Promise<Message[]> {

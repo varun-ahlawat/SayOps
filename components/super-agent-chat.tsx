@@ -16,7 +16,7 @@ import {
   IconX,
   IconMinus
 } from "@tabler/icons-react"
-import { chatWithAgent } from "@/lib/api-client"
+import { chatWithAgent, createConversation } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 
 interface Message {
@@ -43,6 +43,7 @@ export function SuperAgentChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -70,7 +71,14 @@ export function SuperAgentChat() {
     setLoading(true)
 
     try {
-      const res = await chatWithAgent(prompt, "super")
+      let targetConversationId = conversationId
+      if (!targetConversationId) {
+        const conv = await createConversation("super", "reuse")
+        targetConversationId = conv.id
+        setConversationId(conv.id)
+      }
+
+      const res = await chatWithAgent(prompt, "super", undefined, targetConversationId ?? undefined)
       setMessages((prev) => [
         ...prev,
         {

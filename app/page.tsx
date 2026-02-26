@@ -18,7 +18,8 @@ export default function LandingPage() {
   // If already authed, redirect to dashboard
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard")
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      router.push(`/dashboard${search}`)
     }
   }, [loading, user, router])
 
@@ -28,8 +29,8 @@ export default function LandingPage() {
 
     try {
       await signInWithGoogle()
-
-      router.push("/dashboard")
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      router.push(`/dashboard${search}`)
     } catch (err: any) {
       if (err?.code === "auth/popup-closed-by-user") {
         // User closed the popup, not an error

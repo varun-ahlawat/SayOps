@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { IconFile, IconFileUpload, IconPlus } from "@tabler/icons-react"
-import Link from "next/link"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -10,9 +9,11 @@ import {
 } from "@/components/ui/sidebar"
 import { NavSection } from "./NavSection"
 import { useSidebarStore } from "@/stores"
+import { useViewParams } from "@/hooks/useViewParams"
 
 export function NavDocuments() {
   const { sections } = useSidebarStore()
+  const { setView } = useViewParams()
   const searchQuery = sections.documents?.searchQuery || ""
 
   return (
@@ -23,22 +24,20 @@ export function NavDocuments() {
       showSearch
       searchPlaceholder="Search documents..."
       headerAction={
-        <Link
-          href="/documents"
+        <button
+          onClick={() => setView("documents")}
           className="text-muted-foreground hover:text-foreground"
           title="Add Document"
         >
           <IconPlus className="size-4" />
-        </Link>
+        </button>
       }
     >
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <Link href="/documents">
-              <IconFile className="size-4" />
-              <span>All Documents</span>
-            </Link>
+          <SidebarMenuButton onClick={() => setView("documents")}>
+            <IconFile className="size-4" />
+            <span>All Documents</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

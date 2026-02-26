@@ -14,17 +14,18 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
-import Link from "next/link"
 import { NavAgents } from "@/components/sidebar/NavAgents"
 import { NavChatHistory } from "@/components/sidebar/NavChatHistory"
 import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
 import { NavDocuments } from "@/components/sidebar/NavDocuments"
 import { NavCallHistory } from "@/components/sidebar/NavCallHistory"
 import { useSidebarStore, useAgentsStore } from "@/stores"
+import { useViewParams } from "@/hooks/useViewParams"
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
+  const { setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
 
@@ -91,17 +92,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <div className="flex items-center justify-between">
                 <SidebarMenuButton
-                  asChild
+                  onClick={() => setView("dashboard")}
                   className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
                 >
-                  <Link href="/dashboard">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                      S
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="text-base font-bold text-foreground">SpeakOps</span>
-                    </div>
-                  </Link>
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+                    S
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="text-base font-bold text-foreground">SpeakOps</span>
+                  </div>
                 </SidebarMenuButton>
                 <button
                   onClick={toggleCollapsed}

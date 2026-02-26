@@ -1,40 +1,24 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
 import { CallHistoryTable } from "@/components/call-history-table"
-import { useAuth } from "@/lib/auth-context"
 import { fetchCalls, fetchAgents } from "@/lib/api-client"
 import { Agent } from "@/lib/types"
 
-export default function HistoryPage() {
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+export function HistoryPanel() {
   const [calls, setCalls] = useState<any[]>([])
-  const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (authLoading) return
-    if (!user) {
-      router.push("/login")
-      return
-    }
-
     async function load() {
       try {
-        const [agentsData] = await Promise.all([fetchAgents()])
-        setAgents(agentsData)
-        
-        // Fetch calls for all agents or just first one
+        const agentsData = await fetchAgents()
+
         if (agentsData.length > 0) {
           const allCalls = await Promise.all(
-            agentsData.map(a => fetchCalls(a.id))
+            agentsData.map((a: Agent) => fetchCalls(a.id))
           )
-          setCalls(allCalls.flat().sort((a, b) => 
+          setCalls(allCalls.flat().sort((a, b) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           ))
         }
@@ -46,11 +30,11 @@ export default function HistoryPage() {
     }
 
     load()
-  }, [user, authLoading, router])
+  }, [])
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[400px] items-center justify-center">
         <p className="text-muted-foreground">Loading history...</p>
       </div>
     )

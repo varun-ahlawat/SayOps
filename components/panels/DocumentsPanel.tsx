@@ -1,12 +1,17 @@
 "use client"
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { fetchDocuments, uploadFiles, fetchCurrentUser, deleteDocument } from "@/lib/api-client"
+import { fetchDocuments, uploadFiles, fetchCurrentUser, deleteDocument, getDocumentUrl, getDocumentStatus } from "@/lib/api-client"
 import { UserDocument } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import {
   IconFileUpload,
   IconFile,
@@ -14,7 +19,9 @@ import {
   IconLoader2,
   IconPlus,
   IconCheck,
-  IconAlertCircle
+  IconAlertCircle,
+  IconEye,
+  IconDownload,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 
@@ -25,15 +32,44 @@ interface UploadItem {
   error?: string
 }
 
-export default function DocumentsPage() {
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+interface CachedUrl {
+  url: string
+  expiresAt: number
+}
+
+const URL_CACHE_TTL = 12 * 60 * 1000
+
+function isPdf(fileType: string, fileName: string) {
+  return fileType === 'application/pdf' || fileName.endsWith('.pdf')
+}
+
+function isImage(fileType: string, fileName: string) {
+  return fileType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp|tiff)$/i.test(fileName)
+}
+
+export function DocumentsPanel() {
   const [documents, setDocuments] = useState<UserDocument[]>([])
   const [organizationId, setOrganizationId] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([])
   const processingRef = useRef(false)
   const queueRef = useRef<UploadItem[]>([])
+
+  const [previewDoc, setPreviewDoc] = useState<UserDocument | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  const urlCacheRef = useRef<Map<string, CachedUrl>>(new Map())
+
+  const getCachedUrl = useCallback(async (docId: string): Promise<string> => {
+    const cached = urlCacheRef.current.get(docId)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url
+    }
+    const url = await getDocumentUrl(docId)
+    urlCacheRef.current.set(docId, { url, expiresAt: Date.now() + URL_CACHE_TTL })
+    return url
+  }, [])
 
   const loadDocs = useCallback(async () => {
     try {
@@ -47,22 +83,62 @@ export default function DocumentsPage() {
   }, [])
 
   useEffect(() => {
-    if (authLoading) return
-    if (!user) {
-      router.push("/login")
-      return
-    }
-
-    // Load documents and fetch organization info
     loadDocs()
-
-    // Fetch organization info
     fetchCurrentUser().then((data) => {
       if (data.organization?.id) {
         setOrganizationId(data.organization.id)
       }
     }).catch(console.error)
-  }, [user, authLoading, router, loadDocs])
+  }, [loadDocs])
+
+  useEffect(() => {
+    const pendingDocs = documents.filter(d => d.ocr_status === 'pending' || d.ocr_status === 'processing')
+    if (pendingDocs.length === 0) return
+
+    const interval = setInterval(async () => {
+      let changed = false
+      for (const doc of pendingDocs) {
+        try {
+          const status = await getDocumentStatus(doc.id)
+          if (status !== doc.ocr_status) {
+            changed = true
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }
+      if (changed) loadDocs()
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [documents, loadDocs])
+
+  const handlePreview = async (doc: UserDocument) => {
+    setPreviewDoc(doc)
+    setPreviewLoading(true)
+    setPreviewUrl(null)
+    try {
+      const url = await getCachedUrl(doc.id)
+      setPreviewUrl(url)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load preview')
+      setPreviewDoc(null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const handleDownload = async (doc: UserDocument) => {
+    try {
+      const url = await getCachedUrl(doc.id)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.file_name
+      a.click()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to get download URL')
+    }
+  }
 
   const fileMapRef = useRef<Map<string, File>>(new Map())
 
@@ -111,7 +187,6 @@ export default function DocumentsPage() {
     if (doneCount > 0) {
       toast.success(`${doneCount} file${doneCount > 1 ? "s" : ""} uploaded${errorCount > 0 ? ` (${errorCount} failed)` : ""}`)
     }
-    // Clear completed items after a delay
     setTimeout(() => {
       queueRef.current = queueRef.current.filter(i => i.status !== "done")
       setUploadQueue([...queueRef.current])
@@ -130,6 +205,7 @@ export default function DocumentsPage() {
     if (!confirm("Are you sure you want to delete this document?")) return
     try {
       await deleteDocument(docId)
+      urlCacheRef.current.delete(docId)
       toast.success("Document deleted")
       loadDocs()
     } catch (err: any) {
@@ -137,8 +213,8 @@ export default function DocumentsPage() {
     }
   }
 
-  if (authLoading || loading) {
-    return <div className="flex min-h-screen items-center justify-center">Loading Knowledge Base...</div>
+  if (loading) {
+    return <div className="flex min-h-[400px] items-center justify-center">Loading Knowledge Base...</div>
   }
 
   return (
@@ -148,18 +224,18 @@ export default function DocumentsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
           <p className="text-muted-foreground mt-1">Upload documents to train your AI agents on your business data.</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <input
             type="file"
-            id="file-upload"
+            id="file-upload-panel"
             className="hidden"
             multiple
             accept=".pdf,.txt,.doc,.docx"
             onChange={handleFileUpload}
           />
           <Button asChild>
-            <label htmlFor="file-upload" className="cursor-pointer gap-2">
+            <label htmlFor="file-upload-panel" className="cursor-pointer gap-2">
               <IconPlus className="size-4" />
               Add Documents
             </label>
@@ -199,11 +275,11 @@ export default function DocumentsPage() {
           documents.map((doc) => (
             <Card key={doc.id} className="group overflow-hidden">
               <CardHeader className="p-4 pb-0 flex flex-row items-start justify-between space-y-0">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-lg bg-muted flex items-center justify-center">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="size-10 shrink-0 rounded-lg bg-muted flex items-center justify-center">
                     <IconFile className="size-5 text-muted-foreground" />
                   </div>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     <CardTitle className="text-sm font-semibold line-clamp-1">{doc.file_name}</CardTitle>
                     <CardDescription className="text-xs">
                       {(doc.file_size_bytes / 1024).toFixed(1)} KB • {new Date(doc.uploaded_at).toLocaleDateString()}
@@ -230,20 +306,63 @@ export default function DocumentsPage() {
                     </div>
                   )}
                 </div>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                  onClick={() => handleDelete(doc.id)}
-                >
-                  <IconTrash className="size-4" />
-                </Button>
+
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => handlePreview(doc)} title="Preview">
+                    <IconEye className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-muted-foreground/80 transition-colors" onClick={() => handleDownload(doc)} title="Download">
+                    <IconDownload className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive transition-colors" onClick={() => handleDelete(doc.id)} title="Delete">
+                    <IconTrash className="size-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) { setPreviewDoc(null); setPreviewUrl(null) } }}>
+        <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b shrink-0">
+            <div className="flex items-center justify-between pr-8">
+              <div className="min-w-0">
+                <DialogTitle className="truncate">{previewDoc?.file_name}</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  {previewDoc && `${(previewDoc.file_size_bytes / 1024).toFixed(1)} KB • Uploaded ${new Date(previewDoc.uploaded_at).toLocaleDateString()}`}
+                </DialogDescription>
+              </div>
+              {previewDoc && previewUrl && (
+                <Button variant="outline" size="sm" className="shrink-0 ml-4 gap-1.5" onClick={() => handleDownload(previewDoc)}>
+                  <IconDownload className="size-3.5" />
+                  Download
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden">
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <IconLoader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : previewUrl && previewDoc ? (
+              isPdf(previewDoc.file_type, previewDoc.file_name) ? (
+                <iframe src={previewUrl} className="w-full h-full border-0" title={previewDoc.file_name} />
+              ) : isImage(previewDoc.file_type, previewDoc.file_name) ? (
+                <div className="flex items-center justify-center h-full p-6 overflow-auto">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={previewUrl} alt={previewDoc.file_name} className="max-w-full max-h-full object-contain rounded" />
+                </div>
+              ) : (
+                <iframe src={previewUrl} className="w-full h-full border-0" title={previewDoc.file_name} />
+              )
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

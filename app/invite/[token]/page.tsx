@@ -70,7 +70,7 @@ export default function InvitePage() {
             {error || (invite ? `Join ${invite.org_name} on SpeakOps` : "Checking invitation...")}
           </CardDescription>
         </CardHeader>
-        
+
         {!error && invite && (
           <CardContent className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">

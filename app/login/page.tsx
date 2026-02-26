@@ -21,7 +21,8 @@ export default function LoginPage() {
   const [error, setError] = useState("")
 
   if (!loading && user) {
-    router.push("/dashboard")
+    const search = typeof window !== 'undefined' ? window.location.search : ''
+    router.push(`/dashboard${search}`)
     return null
   }
 
@@ -31,8 +32,8 @@ export default function LoginPage() {
 
     try {
       await signInWithGoogle()
-
-      router.push("/dashboard")
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      router.push(`/dashboard${search}`)
     } catch (err: any) {
       if (err?.code !== "auth/popup-closed-by-user") {
         setError(err.message || "Sign in failed")

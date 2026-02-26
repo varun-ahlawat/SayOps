@@ -1,23 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { fetchIntegrations, getGoogleConnectUrl, disconnectIntegration } from "@/lib/api-client"
-import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconBrandGoogle, IconBrandGoogleHome, IconPlug } from "@tabler/icons-react"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/use-toast"
 
-// Available integrations catalog — always shown regardless of backend state
 const AVAILABLE_INTEGRATIONS = [
   {
     provider: 'google_calendar',
     label: 'Google Calendar',
     description: 'Manage calendar events for your agents.',
     icon: 'google',
-    connectProvider: 'google' as const, // maps to getGoogleConnectUrl('google')
+    connectProvider: 'google' as const,
     comingSoon: false,
   },
   {
@@ -38,41 +36,48 @@ const AVAILABLE_INTEGRATIONS = [
   },
 ]
 
-export default function IntegrationsPage() {
+export function IntegrationsPanel() {
+  const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const pathname = usePathname()
   const [connectedProviders, setConnectedProviders] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
 
-  // Handle OAuth callback query params (e.g. ?google_connected=true)
+  // Handle OAuth callback query params
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const googleConnected = params.get("google_connected")
-    const gmailConnected = params.get("gmail_connected")
-    const error = params.get("error")
+    const googleConnected = searchParams.get("google_connected")
+    const gmailConnected = searchParams.get("gmail_connected")
+    const error = searchParams.get("error")
 
     if (googleConnected) {
       toast({ title: "Google Calendar connected successfully!" })
-      router.replace("/integrations")
+      cleanOAuthParams()
     } else if (gmailConnected) {
       toast({ title: "Gmail connected successfully!" })
-      router.replace("/integrations")
+      cleanOAuthParams()
     } else if (error) {
       toast({ title: "Integration failed", description: error, variant: "destructive" })
-      router.replace("/integrations")
+      cleanOAuthParams()
     }
-  }, [router])
+  }, [searchParams])
+
+  const cleanOAuthParams = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("google_connected")
+    params.delete("gmail_connected")
+    params.delete("error")
+    const qs = params.toString()
+    router.replace(`${pathname}${qs ? '?' + qs : ''}`, { scroll: false })
+  }
 
   useEffect(() => {
-    if (authLoading || !user) return
     loadIntegrations()
-  }, [authLoading, user])
+  }, [])
 
   const loadIntegrations = () => {
     setLoading(true)
     fetchIntegrations()
       .then((data) => {
-        // Build a lookup of connected providers
         const connected: Record<string, any> = {}
         for (const integration of data || []) {
           connected[integration.provider] = integration
@@ -88,28 +93,17 @@ export default function IntegrationsPage() {
       const url = await getGoogleConnectUrl(connectProvider)
       window.location.href = url
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to get connection URL.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to get connection URL.", variant: "destructive" })
     }
   }
 
   const handleDisconnect = async (provider: string) => {
     try {
       await disconnectIntegration(provider)
-      toast({
-        title: "Disconnected",
-        description: "Successfully disconnected.",
-      })
+      toast({ title: "Disconnected", description: "Successfully disconnected." })
       loadIntegrations()
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to disconnect.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to disconnect.", variant: "destructive" })
     }
   }
 
@@ -124,7 +118,7 @@ export default function IntegrationsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Spinner className="size-8" />
       </div>
     )
@@ -170,10 +164,7 @@ export default function IntegrationsPage() {
                     Disconnect
                   </Button>
                 ) : (
-                  <Button
-                    className="w-full"
-                    onClick={() => handleConnect(integration.connectProvider!)}
-                  >
+                  <Button className="w-full" onClick={() => handleConnect(integration.connectProvider!)}>
                     Connect
                   </Button>
                 )}

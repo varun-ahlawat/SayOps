@@ -79,33 +79,35 @@ export function NavSection({
     >
       <SidebarGroup className={className}>
         <SidebarGroupLabel asChild>
-          <CollapsibleTrigger className="flex items-center w-full gap-2">
-            {icon && <span className="shrink-0">{icon}</span>}
-            <span className="flex-1 text-left">{title}</span>
-            {showSearch && (
-              <span
-                role="button"
-                className="mr-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
-                onClick={toggleSearch}
-                title="Search"
-              >
-                <IconSearch className="size-3.5" />
-              </span>
-            )}
-            {headerAction && (
-              <span
-                className="mr-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {headerAction}
-              </span>
-            )}
-            <IconChevronRight
-              className={cn(
-                "size-4 transition-transform shrink-0",
-                isOpen && "rotate-90"
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center w-full gap-2 cursor-pointer">
+              {icon && <span className="shrink-0">{icon}</span>}
+              <span className="flex-1 text-left">{title}</span>
+              {showSearch && (
+                <span
+                  role="button"
+                  className="mr-0.5 text-muted-foreground hover:text-foreground cursor-pointer z-10"
+                  onClick={toggleSearch}
+                  title="Search"
+                >
+                  <IconSearch className="size-3.5" />
+                </span>
               )}
-            />
+              {headerAction && (
+                <span
+                  className="mr-1 z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {headerAction}
+                </span>
+              )}
+              <IconChevronRight
+                className={cn(
+                  "size-4 transition-transform shrink-0",
+                  isOpen && "rotate-90"
+                )}
+              />
+            </div>
           </CollapsibleTrigger>
         </SidebarGroupLabel>
 
