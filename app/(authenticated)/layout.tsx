@@ -12,7 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <AppSidebar />
         </Suspense>
         <main className="flex flex-1 flex-col overflow-auto">
-          <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-14 lg:pt-4">
             {children}
             <Suspense fallback={null}>
               <PersistentEva />

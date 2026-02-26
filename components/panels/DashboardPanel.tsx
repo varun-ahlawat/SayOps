@@ -69,12 +69,12 @@ export function DashboardPanel() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 lg:p-8">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
           <p className="text-muted-foreground mt-1">Manage your AI agents and monitor performance.</p>
         </div>
-        <Button className="gap-2 shadow-sm" onClick={() => setView("create-agent")}>
+        <Button className="gap-2 shadow-sm w-full sm:w-auto" onClick={() => setView("create-agent")}>
           <IconPlus className="size-4" />
           Create Agent
         </Button>

@@ -24,7 +24,9 @@ DEPLOYMENT_STATUS.md
 
 # architecture docs (internal only)
 ARCHITECTURE.md
+ARCHITECTURE_SAYOPS.md
 GOVERNANCE.md
+GOVERNANCE_SAYOPS.md
 
 # vercel
 .vercel

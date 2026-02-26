@@ -57,6 +57,24 @@ export function UniversalChat({
   const { evaConversations, fetchEvaConversations } = useConversationsStore()
   const [historyOpen, setHistoryOpen] = React.useState(false)
 
+  // Tracks whether viewport is below lg (1024px) — used only for conditional inline style
+  const [isNarrow, setIsNarrow] = React.useState(false)
+  React.useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)')
+    setIsNarrow(mql.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+
+  // Prevent background scroll when Eva is open fullscreen on mobile/tablet
+  React.useEffect(() => {
+    if (isOpen && isNarrow) {
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = '' }
+    }
+  }, [isOpen, isNarrow])
+
   const [input, setInput] = React.useState("")
   const [attachments, setAttachments] = React.useState<File[]>([])
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
@@ -421,24 +439,33 @@ export function UniversalChat({
   }
 
   // Open bubble widget
+  // Mobile/tablet (< lg): fullscreen overlay. Desktop (lg+): fixed bottom-right widget.
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+    <div className={cn(
+      "fixed z-50 flex flex-col",
+      "inset-0",
+      "lg:inset-auto lg:bottom-6 lg:right-6 lg:items-end lg:gap-4"
+    )}>
       <div
         className={cn(
-          "flex flex-col rounded-xl border bg-background shadow-2xl overflow-hidden border-primary/20 relative"
+          "flex flex-col border bg-background shadow-2xl overflow-hidden border-primary/20 relative",
+          "w-full h-full rounded-none",
+          "lg:rounded-xl lg:w-auto lg:h-auto"
         )}
-        style={{ width: size.width, height: size.height }}
+        style={isNarrow ? undefined : { width: size.width, height: size.height }}
       >
+        {/* Resize handle: desktop only */}
         <div
-          className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-50 rounded-tl-xl hover:bg-primary/20 transition-colors"
+          className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-50 rounded-tl-xl hover:bg-primary/20 transition-colors hidden lg:block"
           onMouseDown={handleMouseDown}
         />
         {chatContent}
       </div>
 
+      {/* Collapse chevron: desktop only */}
       <Button
         size="icon"
-        className="size-10 rounded-full shadow-md bg-muted text-muted-foreground hover:bg-muted/80"
+        className="size-10 rounded-full shadow-md bg-muted text-muted-foreground hover:bg-muted/80 hidden lg:flex"
         onClick={() => setOpen(false)}
       >
         <IconChevronDown className="size-5" />
