@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Form,
   FormControl,
@@ -34,6 +35,16 @@ import { updateAgent } from "@/lib/api-client"
 import { toast } from "sonner"
 import { Agent } from "@/lib/types"
 
+const AVAILABLE_PLATFORMS = [
+  { id: 'sms', label: 'SMS' },
+  { id: 'voice', label: 'Voice' },
+  { id: 'web', label: 'Web Chat' },
+  { id: 'facebook', label: 'Facebook Messenger' },
+  { id: 'instagram', label: 'Instagram DM' },
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'telegram', label: 'Telegram' },
+]
+
 const agentFormSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
@@ -43,6 +54,7 @@ const agentFormSchema = z.object({
     message: "Instructions must be at least 10 characters.",
   }),
   enabled_connectors: z.array(z.string()),
+  platforms: z.array(z.string()),
   has_knowledge_base: z.boolean().default(true),
 })
 
@@ -59,6 +71,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
       description: agent.description || "",
       system_prompt: agent.system_prompt,
       enabled_connectors: agent.enabled_connectors || [],
+      platforms: agent.platforms || ['sms', 'voice'],
       has_knowledge_base: agent.has_knowledge_base ?? true,
     },
   })
@@ -197,6 +210,49 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                       onChange={field.onChange}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="platforms"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Channels</FormLabel>
+                  <FormDescription>
+                    Select which channels this agent can handle. Make sure you have connected the channel in Integrations.
+                  </FormDescription>
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    {AVAILABLE_PLATFORMS.map((platform) => (
+                      <FormField
+                        key={platform.id}
+                        control={form.control}
+                        name="platforms"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(platform.id)}
+                                onCheckedChange={(checked) => {
+                                  const current = field.value || []
+                                  if (checked) {
+                                    field.onChange([...current, platform.id])
+                                  } else {
+                                    field.onChange(current.filter((v) => v !== platform.id))
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              {platform.label}
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

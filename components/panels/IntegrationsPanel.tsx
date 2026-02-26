@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { fetchIntegrations, getGoogleConnectUrl, disconnectIntegration } from "@/lib/api-client"
+import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconBrandGoogle, IconBrandGoogleHome, IconPlug } from "@tabler/icons-react"
@@ -34,6 +34,14 @@ const AVAILABLE_INTEGRATIONS = [
     connectProvider: null,
     comingSoon: true,
   },
+  {
+    provider: 'facebook',
+    label: 'Facebook Messenger',
+    description: 'Chat with customers on Facebook Messenger.',
+    icon: 'facebook',
+    connectProvider: 'facebook' as const,
+    comingSoon: false,
+  },
 ]
 
 export function IntegrationsPanel() {
@@ -47,6 +55,7 @@ export function IntegrationsPanel() {
   useEffect(() => {
     const googleConnected = searchParams.get("google_connected")
     const gmailConnected = searchParams.get("gmail_connected")
+    const facebookConnected = searchParams.get("facebook_connected")
     const error = searchParams.get("error")
 
     if (googleConnected) {
@@ -54,6 +63,9 @@ export function IntegrationsPanel() {
       cleanOAuthParams()
     } else if (gmailConnected) {
       toast({ title: "Gmail connected successfully!" })
+      cleanOAuthParams()
+    } else if (facebookConnected) {
+      toast({ title: "Facebook Messenger connected successfully!" })
       cleanOAuthParams()
     } else if (error) {
       toast({ title: "Integration failed", description: error, variant: "destructive" })
@@ -88,9 +100,9 @@ export function IntegrationsPanel() {
       .finally(() => setLoading(false))
   }
 
-  const handleConnect = async (connectProvider: 'google' | 'gmail') => {
+  const handleConnect = async (connectProvider: 'google' | 'gmail' | 'facebook' | 'hubspot') => {
     try {
-      const url = await getGoogleConnectUrl(connectProvider)
+      const url = await getIntegrationConnectUrl(connectProvider)
       window.location.href = url
     } catch (err) {
       toast({ title: "Error", description: "Failed to get connection URL.", variant: "destructive" })

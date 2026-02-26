@@ -345,13 +345,29 @@ export async function fetchIntegrations(): Promise<any[]> {
   }
 }
 
-export async function getGoogleConnectUrl(provider: 'google' | 'gmail' = 'google'): Promise<string> {
+export async function getIntegrationConnectUrl(provider: 'google' | 'gmail' | 'facebook' | 'hubspot'): Promise<string> {
   const res = await apiFetch<{ url: string }>(`/integrations/${provider}/connect`)
   return res.url
 }
 
 export async function disconnectIntegration(provider: string): Promise<void> {
   await apiFetch<{ success: boolean }>(`/integrations/${provider}`, {
+    method: "DELETE",
+  })
+}
+
+export async function getFacebookConnectUrl(): Promise<string> {
+  const res = await apiFetch<{ url: string }>("/integrations/facebook/connect")
+  return res.url
+}
+
+export async function listFacebookAccounts(): Promise<{ id: string; name: string; connected_at: string }[]> {
+  const res = await apiFetch<{ accounts: any[] }>("/integrations/facebook/list")
+  return res.accounts || []
+}
+
+export async function disconnectFacebookAccount(pageId: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/integrations/facebook/${pageId}`, {
     method: "DELETE",
   })
 }
