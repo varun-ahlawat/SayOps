@@ -372,6 +372,49 @@ export async function disconnectFacebookAccount(pageId: string): Promise<void> {
   })
 }
 
+// WhatsApp
+export async function connectWhatsApp(data: {
+  phoneNumberId: string
+  wabaId: string
+  phoneNumber: string
+  accessToken: string
+}): Promise<void> {
+  await apiFetch<{ success: boolean }>("/integrations/whatsapp/connect", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function listWhatsAppAccounts(): Promise<{ id: string; name: string; connected_at: string }[]> {
+  const res = await apiFetch<{ accounts: any[] }>("/integrations/whatsapp/list")
+  return res.accounts || []
+}
+
+export async function disconnectWhatsAppAccount(phoneNumberId: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/integrations/whatsapp/${phoneNumberId}`, {
+    method: "DELETE",
+  })
+}
+
+// Telegram
+export async function connectTelegram(botToken: string): Promise<void> {
+  await apiFetch<{ success: boolean }>("/integrations/telegram/connect", {
+    method: "POST",
+    body: JSON.stringify({ botToken }),
+  })
+}
+
+export async function listTelegramAccounts(): Promise<{ id: string; name: string; username: string; connected_at: string }[]> {
+  const res = await apiFetch<{ accounts: any[] }>("/integrations/telegram/list")
+  return res.accounts || []
+}
+
+export async function disconnectTelegramAccount(botId: string): Promise<void> {
+  await apiFetch<{ success: boolean }>(`/integrations/telegram/${botId}`, {
+    method: "DELETE",
+  })
+}
+
 export async function getInvite(token: string): Promise<any> {
   return apiFetch<any>(`/org/invites/${token}`)
 }
