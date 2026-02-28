@@ -6,11 +6,9 @@ import {
   IconX,
   IconMaximize,
   IconMinimize,
-  IconSend,
   IconPlus,
   IconLoader2,
   IconSparkles,
-  IconPaperclip,
   IconChevronDown,
   IconHistory,
 } from "@tabler/icons-react"
@@ -19,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, getChatSummary } from "@/lib/utils"
 import { ChatMessage } from "./ChatMessage"
+import { ChatInput } from "./ChatInput"
 import { useEvaChatStore, useConversationsStore } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
 
@@ -39,17 +38,12 @@ export function UniversalChat({
     conversationId,
     messages,
     isLoading,
-    queuedMessages,
     pendingNavigation,
-    attachments,
     toggleOpen,
     setOpen,
     toggleFullscreen,
     setSize,
     sendMessage,
-    addAttachment,
-    removeAttachment,
-    removeQueuedMessage,
     startNewChat,
     clearPendingNavigation,
     loadConversationFromDB,
@@ -78,9 +72,7 @@ export function UniversalChat({
     }
   }, [isOpen, isNarrow])
 
-  const [input, setInput] = React.useState("")
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -99,61 +91,12 @@ export function UniversalChat({
     clearPendingNavigation()
   }, [pendingNavigation, setView, clearPendingNavigation])
 
-  // Auto-resize textarea to fit content
-  const autoResize = React.useCallback(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 150) + 'px'
-  }, [])
-
-  React.useEffect(() => {
-    autoResize()
-  }, [input, autoResize])
-
-  // Focus the input when the chat opens or switches conversations
-  React.useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        textareaRef.current?.focus()
-      }, 50)
-    }
-  }, [isOpen, conversationId])
-
-  const handleSend = async () => {
-    if (!input.trim() && attachments.length === 0) return
-    const content = input
-    setInput("")
-    // Attachments are cleared in store.sendMessage
-    await sendMessage(content)
-    
-    // Refocus the input after sending (in case they clicked the send button)
-    setTimeout(() => {
-      textareaRef.current?.focus()
-    }, 0)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  const handleNewChat = () => {
-    startNewChat()
-  }
-
-  const handleToggleFullscreen = () => {
-    toggleFullscreen()
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    files.forEach(file => addAttachment(file))
-    // Reset input value so same file can be selected again if needed
-    e.target.value = ''
-  }
+  const handleSendMessage = React.useCallback(
+    async (content: string, files: File[]) => {
+      await sendMessage(content, files)
+    },
+    [sendMessage]
+  )
 
   const chatContent = (
     <>
@@ -172,7 +115,7 @@ export function UniversalChat({
             variant="ghost"
             size="icon"
             className="size-7 text-primary-foreground hover:bg-primary-foreground/20"
-            onClick={handleNewChat}
+            onClick={startNewChat}
             title="New Chat"
           >
             <IconPlus className="size-4" />
@@ -219,7 +162,7 @@ export function UniversalChat({
             variant="ghost"
             size="icon"
             className="size-7 text-primary-foreground hover:bg-primary-foreground/20"
-            onClick={handleToggleFullscreen}
+            onClick={toggleFullscreen}
             title={isFullscreen ? "Minimize" : "Open in full page"}
           >
             {isFullscreen ? (
@@ -268,7 +211,7 @@ export function UniversalChat({
                   variant="outline"
                   size="sm"
                   className="text-xs h-auto py-2 justify-start"
-                  onClick={() => setInput(suggestion)}
+                  onClick={() => handleSendMessage(suggestion, [])}
                 >
                   {suggestion}
                 </Button>
@@ -302,76 +245,12 @@ export function UniversalChat({
         )}
       </ScrollArea>
 
-      {attachments.length > 0 && (
-        <div className="px-3 py-2 border-t bg-muted/30 flex flex-wrap gap-2">
-          {attachments.map((att) => (
-            <div
-              key={att.id}
-              className="relative group size-16 rounded-md overflow-hidden border bg-background"
-            >
-              <img src={att.previewUrl} alt="attachment" className="size-full object-cover" />
-              <button
-                onClick={() => removeAttachment(att.id)}
-                className="absolute top-0.5 right-0.5 size-4 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <IconX className="size-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="p-3 border-t bg-muted/30 shrink-0">
-        {queuedMessages.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {queuedMessages.map((qm) => (
-              <div
-                key={qm.id}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs max-w-full"
-              >
-                <span className="truncate">
-                  {typeof qm.content === 'string' ? qm.content : '[Multimodal Message]'}
-                </span>
-                <button
-                  onClick={() => removeQueuedMessage(qm.id)}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <IconX className="size-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex items-end gap-2 bg-background border rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-primary">
-          <label className="cursor-pointer p-1.5 hover:bg-muted rounded-md transition-colors" title="Attach image">
-            <IconPaperclip className="size-4 text-muted-foreground" />
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-          </label>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isLoading ? "Type to queue a message..." : "Message Eva..."}
-            className="flex-1 bg-transparent border-none focus-visible:ring-0 focus:outline-none text-sm resize-none min-h-[36px] max-h-[150px] py-2 px-3"
-            rows={1}
-          />
-          <Button
-            size="icon"
-            className="size-8 rounded-lg"
-            onClick={handleSend}
-            disabled={!input.trim() && attachments.length === 0}
-          >
-            <IconSend className="size-4" />
-          </Button>
-        </div>
-      </div>
+      <ChatInput
+        onSend={handleSendMessage}
+        isLoading={isLoading}
+        placeholder="Message Eva..."
+        loadingPlaceholder="Type to queue a message..."
+      />
     </>
   )
 

@@ -4,10 +4,10 @@ import React, { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
 import { chatWithAgent, fetchConversations, fetchMessages, updateConversationStatus, deleteConversation } from "@/lib/api-client"
 import { Conversation } from "@/lib/types"
-import { IconSend, IconRobot, IconUser, IconLoader2, IconRefresh, IconPlus, IconMessage, IconTrash } from "@tabler/icons-react"
+import { ChatInput } from "@/components/chat/ChatInput"
+import { IconRobot, IconUser, IconLoader2, IconRefresh, IconPlus, IconMessage, IconTrash } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 
 interface TestMessage {
@@ -17,14 +17,12 @@ interface TestMessage {
 }
 
 export function TestModeSimulator({ agentId }: { agentId: string }) {
-  const [input, setInput] = useState("")
   const [messages, setMessages] = useState<TestMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const loadConversations = useCallback(async () => {
     if (!agentId) return []
@@ -44,16 +42,24 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
       setMessages([])
       return
     }
-    
+
     setIsInitializing(true)
     try {
       const msgs = await fetchMessages(convId)
       const filteredMsgs = msgs.filter(m => m.role !== 'tool')
-      setMessages(filteredMsgs.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content || "",
-        toolCalls: m.tool_calls || undefined
-      })))
+      setMessages(filteredMsgs.map(m => {
+        let content = ""
+        if (typeof m.content === 'string') {
+          content = m.content
+        } else if (Array.isArray(m.content)) {
+          content = m.content.filter(p => p.type === 'text').map(p => p.text).join("\n") || ""
+        }
+        return {
+          role: m.role as 'user' | 'assistant',
+          content,
+          toolCalls: m.tool_calls || undefined
+        }
+      }))
     } catch (err) {
       console.error("Failed to fetch messages:", err)
     } finally {
@@ -81,24 +87,21 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return
-
-    const userMsg: TestMessage = { role: 'user', content: input.trim() }
+  const handleSend = useCallback(async (content: string, _files: File[]) => {
+    const userMsg: TestMessage = { role: 'user', content }
     setMessages(prev => [...prev, userMsg])
-    setInput("")
     setIsLoading(true)
 
     try {
-      const response = await chatWithAgent(userMsg.content, agentId, undefined, conversationId || undefined)
-      
+      const response = await chatWithAgent(content, agentId, undefined, conversationId || undefined)
+
       const assistantMsg: TestMessage = {
         role: 'assistant',
         content: response.broadcast || response.output,
         toolCalls: response.toolCalls
       }
       setMessages(prev => [...prev, assistantMsg])
-      
+
       if (!conversationId && response.sessionID) {
         // Find the conversation ID matching this execution/session.
         const convs = await loadConversations()
@@ -112,7 +115,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [agentId, conversationId, loadConversations])
 
   const handleNewChat = async () => {
     if (conversationId) {
@@ -125,7 +128,6 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
     }
     setConversationId(null)
     setMessages([])
-    setInput("")
   }
 
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
@@ -156,7 +158,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
           </Button>
         </div>
       </CardHeader>
-      
+
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="w-64 border-r bg-muted/20 flex flex-col hidden sm:flex">
@@ -186,9 +188,9 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
                         {new Date(conv.started_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="size-6 opacity-0 group-hover:opacity-100 h-6 w-6"
                       onClick={(e) => handleDeleteConversation(e, conv.id)}
                     >
@@ -229,11 +231,11 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
                         </>
                       )}
                     </div>
-                    
+
                     <div className={cn(
                       "max-w-[85%] px-4 py-2.5 rounded-2xl text-sm shadow-sm",
-                      msg.role === 'user' 
-                        ? "bg-primary text-primary-foreground rounded-tr-none" 
+                      msg.role === 'user'
+                        ? "bg-primary text-primary-foreground rounded-tr-none"
                         : "bg-background border border-primary/10 rounded-tl-none"
                     )}>
                       {msg.content}
@@ -243,7 +245,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
                       <div className="mt-1 flex flex-wrap gap-2">
                         {msg.toolCalls.map((call, j) => (
                           <div key={j} className="text-[10px] font-mono bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200/50">
-                            🛠️ {call.name}
+                            {call.name}
                           </div>
                         ))}
                       </div>
@@ -266,23 +268,13 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
             )}
           </ScrollArea>
 
-          <div className="p-4 border-t bg-background">
-            <form 
-              onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-              className="flex items-center gap-2"
-            >
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type customer message..."
-                disabled={isInitializing || isLoading}
-                className="flex-1"
-              />
-              <Button size="icon" type="submit" disabled={isInitializing || isLoading || !input.trim()}>
-                <IconSend className="size-4" />
-              </Button>
-            </form>
-          </div>
+          <ChatInput
+            onSend={handleSend}
+            isLoading={isLoading}
+            disabled={isInitializing}
+            placeholder="Type customer message..."
+            loadingPlaceholder="Type to queue a message..."
+          />
         </CardContent>
       </div>
     </Card>
