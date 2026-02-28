@@ -29,20 +29,29 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { IconChevronDown, IconChevronRight, IconLoader2 } from "@tabler/icons-react"
+import { IconChevronDown, IconChevronRight, IconLoader2, IconCheck, IconPlugConnected, IconX } from "@tabler/icons-react"
 import { ConnectorSelector } from "./ConnectorSelector"
-import { updateAgent } from "@/lib/api-client"
+import {
+  updateAgent,
+  getAgentChannels,
+  enableAgentChannel,
+  disableAgentChannel,
+  type AgentChannelBinding,
+} from "@/lib/api-client"
 import { toast } from "sonner"
 import { Agent } from "@/lib/types"
 
-const AVAILABLE_PLATFORMS = [
+// Non-Meta channels — simple checkboxes (no account binding needed)
+const SIMPLE_PLATFORMS = [
   { id: 'sms', label: 'SMS' },
   { id: 'voice', label: 'Voice' },
   { id: 'web', label: 'Web Chat' },
+]
+
+// Meta channels — need full provisioning flow
+const META_CHANNELS = [
   { id: 'facebook', label: 'Facebook Messenger' },
   { id: 'instagram', label: 'Instagram DM' },
-  { id: 'whatsapp', label: 'WhatsApp' },
-  { id: 'telegram', label: 'Telegram' },
 ]
 
 const agentFormSchema = z.object({
@@ -60,9 +69,140 @@ const agentFormSchema = z.object({
 
 type AgentFormValues = z.infer<typeof agentFormSchema>
 
+function MetaChannelCard({
+  channel,
+  label,
+  agentId,
+  binding,
+  onRefresh,
+}: {
+  channel: string
+  label: string
+  agentId: string
+  binding: AgentChannelBinding | undefined
+  onRefresh: () => void
+}) {
+  const [loading, setLoading] = React.useState(false)
+  const [pendingAccounts, setPendingAccounts] = React.useState<{ id: string; name: string | null }[] | null>(null)
+
+  async function handleEnable(accountId?: string) {
+    setLoading(true)
+    try {
+      const result = await enableAgentChannel(agentId, channel, accountId)
+
+      if (result.status === 'success') {
+        toast.success(`${label} connected successfully`)
+        setPendingAccounts(null)
+        onRefresh()
+      } else if (result.status === 'needs_oauth') {
+        // Redirect to Facebook OAuth — will come back to agent settings after
+        window.location.href = result.oauthUrl
+      } else if (result.status === 'needs_selection') {
+        setPendingAccounts(result.accounts)
+      } else if (result.status === 'error') {
+        toast.error(result.error)
+      }
+    } catch (err: any) {
+      toast.error(err.message || `Failed to enable ${label}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDisable() {
+    setLoading(true)
+    try {
+      await disableAgentChannel(agentId, channel)
+      toast.success(`${label} disconnected`)
+      onRefresh()
+    } catch (err: any) {
+      toast.error(err.message || `Failed to disable ${label}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Page picker when org has multiple Facebook pages
+  if (pendingAccounts) {
+    return (
+      <div className="flex flex-col gap-2 rounded-lg border p-3">
+        <div className="text-sm font-medium">{label}</div>
+        <p className="text-xs text-muted-foreground">Select which page to connect:</p>
+        <div className="flex flex-col gap-1">
+          {pendingAccounts.map((account) => (
+            <Button
+              key={account.id}
+              variant="outline"
+              size="sm"
+              onClick={() => handleEnable(account.id)}
+              disabled={loading}
+              className="justify-start"
+            >
+              {account.name || account.id}
+            </Button>
+          ))}
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setPendingAccounts(null)}>
+          Cancel
+        </Button>
+      </div>
+    )
+  }
+
+  // Connected state
+  if (binding) {
+    return (
+      <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3">
+        <div className="flex items-center gap-2">
+          <IconCheck className="h-4 w-4 text-green-600" />
+          <div>
+            <div className="text-sm font-medium">{label}</div>
+            <div className="text-xs text-muted-foreground">
+              {binding.account_name || binding.account_id}
+              {!binding.webhook_subscribed && (
+                <span className="text-amber-600 ml-1">(webhook pending)</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDisable}
+          disabled={loading}
+          className="text-destructive hover:text-destructive"
+        >
+          {loading ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconX className="h-4 w-4" />}
+        </Button>
+      </div>
+    )
+  }
+
+  // Disconnected state
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-3">
+      <div className="text-sm font-medium">{label}</div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleEnable()}
+        disabled={loading}
+      >
+        {loading ? (
+          <IconLoader2 className="mr-1 h-4 w-4 animate-spin" />
+        ) : (
+          <IconPlugConnected className="mr-1 h-4 w-4" />
+        )}
+        Connect
+      </Button>
+    </div>
+  )
+}
+
 export function AgentSettingsForm({ agent }: { agent: Agent }) {
   const [isAdvancedOpen, setIsAdvancedOpen] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [channelBindings, setChannelBindings] = React.useState<AgentChannelBinding[]>([])
 
   const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
@@ -75,6 +215,33 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
       has_knowledge_base: agent.has_knowledge_base ?? true,
     },
   })
+
+  // Load channel bindings on mount
+  const loadChannels = React.useCallback(async () => {
+    try {
+      const channels = await getAgentChannels(agent.id)
+      setChannelBindings(channels)
+    } catch {
+      // silently fail — channels section still shows "disconnected"
+    }
+  }, [agent.id])
+
+  React.useEffect(() => {
+    loadChannels()
+
+    // Check for channel_connected query param (after OAuth redirect)
+    const params = new URLSearchParams(window.location.search)
+    const connected = params.get('channel_connected')
+    if (connected) {
+      toast.success(`${connected === 'facebook' ? 'Facebook Messenger' : 'Instagram DM'} connected successfully`)
+      // Clean up URL
+      params.delete('channel_connected')
+      const newUrl = params.toString()
+        ? `${window.location.pathname}?${params}`
+        : window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }
+  }, [loadChannels])
 
   async function onSubmit(data: AgentFormValues) {
     setIsSubmitting(true)
@@ -96,7 +263,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="instructions">System Prompt</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="basic" className="space-y-4 py-4">
             <FormField
               control={form.control}
@@ -128,7 +295,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
               )}
             />
           </TabsContent>
-          
+
           <TabsContent value="instructions" className="space-y-4 py-4">
             <FormField
               control={form.control}
@@ -137,10 +304,10 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                 <FormItem>
                   <FormLabel>System Prompt</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="You are a helpful assistant..." 
+                    <Textarea
+                      placeholder="You are a helpful assistant..."
                       className="min-h-[250px] font-mono text-sm"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -161,7 +328,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-semibold">Advanced Settings</h4>
-              <p className="text-xs text-muted-foreground">Manage connectors and knowledge base access.</p>
+              <p className="text-xs text-muted-foreground">Manage connectors, channels, and knowledge base access.</p>
             </div>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" className="w-9 p-0">
@@ -174,7 +341,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
               </Button>
             </CollapsibleTrigger>
           </div>
-          
+
           <CollapsibleContent className="space-y-6 pt-4">
             <FormField
               control={form.control}
@@ -205,7 +372,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                   <FormLabel>Enabled Connectors</FormLabel>
                   <FormDescription>Select which third-party tools this agent can use.</FormDescription>
                   <FormControl>
-                    <ConnectorSelector 
+                    <ConnectorSelector
                       selected={field.value || []}
                       onChange={field.onChange}
                     />
@@ -215,17 +382,18 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
               )}
             />
 
+            {/* Simple channels — checkboxes (sms, voice, web) */}
             <FormField
               control={form.control}
               name="platforms"
               render={() => (
                 <FormItem>
-                  <FormLabel>Channels</FormLabel>
+                  <FormLabel>Basic Channels</FormLabel>
                   <FormDescription>
-                    Select which channels this agent can handle. Make sure you have connected the channel in Integrations.
+                    Toggle simple channels that don't require account linking.
                   </FormDescription>
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    {AVAILABLE_PLATFORMS.map((platform) => (
+                    {SIMPLE_PLATFORMS.map((platform) => (
                       <FormField
                         key={platform.id}
                         control={form.control}
@@ -257,6 +425,26 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                 </FormItem>
               )}
             />
+
+            {/* Meta channels — full provisioning cards */}
+            <div>
+              <h4 className="text-sm font-medium mb-1">Social Channels</h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Connect your Facebook Page or Instagram Business Account. OAuth authorization is required.
+              </p>
+              <div className="flex flex-col gap-2">
+                {META_CHANNELS.map((ch) => (
+                  <MetaChannelCard
+                    key={ch.id}
+                    channel={ch.id}
+                    label={ch.label}
+                    agentId={agent.id}
+                    binding={channelBindings.find(b => b.channel === ch.id)}
+                    onRefresh={loadChannels}
+                  />
+                ))}
+              </div>
+            </div>
           </CollapsibleContent>
         </Collapsible>
 

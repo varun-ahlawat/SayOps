@@ -5,11 +5,12 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useEvaChatStore } from "@/stores"
 
 /**
- * Bidirectional sync between evaChatStore and ?chat / ?chatFullscreen URL params.
+ * Bidirectional sync between evaChatStore and ?chat URL param.
  *
  * - On mount: if URL has ?chat=xxx, override store (for shared links / refresh)
  * - Continuously: when store changes, sync to URL via router.replace
  * - skipRef prevents render loops (store→URL→store)
+ * - Fullscreen state is transient UI state, not persisted to URL
  */
 export function useChatUrlSync() {
   const searchParams = useSearchParams()
@@ -26,7 +27,6 @@ export function useChatUrlSync() {
     initializedRef.current = true
 
     const chatParam = searchParams.get("chat")
-    const fullscreenParam = searchParams.get("chatFullscreen")
 
     if (chatParam) {
       skipRef.current = true
@@ -36,9 +36,6 @@ export function useChatUrlSync() {
         store.loadConversationFromDB(chatParam)
       }
       store.setOpen(true)
-      if (fullscreenParam === "true") {
-        store.setFullscreen(true)
-      }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -59,17 +56,6 @@ export function useChatUrlSync() {
         params.set("chat", chatValue)
         changed = true
       }
-      if (store.isFullscreen) {
-        if (params.get("chatFullscreen") !== "true") {
-          params.set("chatFullscreen", "true")
-          changed = true
-        }
-      } else {
-        if (params.has("chatFullscreen")) {
-          params.delete("chatFullscreen")
-          changed = true
-        }
-      }
     }
     // When chat is closed, DO NOT remove params — they preserve conversation state
 
@@ -78,5 +64,5 @@ export function useChatUrlSync() {
       const qs = params.toString()
       router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false })
     }
-  }, [store.isOpen, store.conversationId, store.isFullscreen, searchParams, router, pathname])
+  }, [store.isOpen, store.conversationId, searchParams, router, pathname])
 }

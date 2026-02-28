@@ -397,6 +397,45 @@ export async function disconnectWhatsAppAccount(phoneNumberId: string): Promise<
   })
 }
 
+// ---- Agent Channels ----
+
+export interface AgentChannelBinding {
+  id: string
+  agent_id: string
+  organization_id: string
+  channel: string
+  account_id: string
+  account_name: string | null
+  is_active: boolean
+  webhook_subscribed: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type EnableChannelResult =
+  | { status: 'success'; channel: AgentChannelBinding }
+  | { status: 'needs_oauth'; oauthUrl: string }
+  | { status: 'needs_selection'; accounts: { id: string; name: string | null }[] }
+  | { status: 'error'; error: string }
+
+export async function getAgentChannels(agentId: string): Promise<AgentChannelBinding[]> {
+  const res = await apiFetch<{ channels: AgentChannelBinding[] }>(`/agents/${agentId}/channels`)
+  return res.channels || []
+}
+
+export async function enableAgentChannel(agentId: string, channel: string, accountId?: string): Promise<EnableChannelResult> {
+  return apiFetch<EnableChannelResult>(`/agents/${agentId}/channels/${channel}/enable`, {
+    method: "POST",
+    body: JSON.stringify(accountId ? { accountId } : {}),
+  })
+}
+
+export async function disableAgentChannel(agentId: string, channel: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}/channels/${channel}/disable`, {
+    method: "DELETE",
+  })
+}
+
 // Telegram
 export async function connectTelegram(botToken: string): Promise<void> {
   await apiFetch<{ success: boolean }>("/integrations/telegram/connect", {
