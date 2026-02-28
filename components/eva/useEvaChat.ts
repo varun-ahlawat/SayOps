@@ -16,8 +16,8 @@ export function useEvaChat() {
     startNewChat,
   } = useEvaChatStore()
 
-  const sendMessage = async (content: string) => {
-    await storeSendMessage(content)
+  const sendMessage = async (content: string, files: File[] = []) => {
+    await storeSendMessage(content, files)
   }
 
   return {
