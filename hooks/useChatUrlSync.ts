@@ -52,7 +52,8 @@ export function useChatUrlSync() {
     const params = new URLSearchParams(searchParams.toString())
     let changed = false
 
-    if (store.isOpen && (store.conversationId || store.messages.length > 0)) {
+    // Only sync to URL when chat is OPEN
+    if (store.isOpen) {
       const chatValue = store.conversationId || "new"
       if (params.get("chat") !== chatValue) {
         params.set("chat", chatValue)
@@ -69,21 +70,13 @@ export function useChatUrlSync() {
           changed = true
         }
       }
-    } else {
-      if (params.has("chat")) {
-        params.delete("chat")
-        changed = true
-      }
-      if (params.has("chatFullscreen")) {
-        params.delete("chatFullscreen")
-        changed = true
-      }
     }
+    // When chat is closed, DO NOT remove params — they preserve conversation state
 
     if (changed) {
       skipRef.current = true
       const qs = params.toString()
       router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false })
     }
-  }, [store.isOpen, store.conversationId, store.isFullscreen, store.messages.length, searchParams, router, pathname])
+  }, [store.isOpen, store.conversationId, store.isFullscreen, searchParams, router, pathname])
 }

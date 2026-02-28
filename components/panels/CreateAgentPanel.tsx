@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { createAgent, uploadFiles } from "@/lib/api-client"
 import { useViewParams } from "@/hooks/useViewParams"
+import { useAgentsStore } from "@/stores/agentsStore"
 import type { Agent } from "@/lib/types"
 import { toast } from "sonner"
 
@@ -40,6 +41,7 @@ function formatPhoneForDisplay(phone: string | null): string {
 
 export function CreateAgentPanel() {
   const { setView } = useViewParams()
+  const { addAgent } = useAgentsStore()
 
   const [name, setName] = useState("")
   const [systemPrompt, setSystemPrompt] = useState("")
@@ -83,6 +85,7 @@ export function CreateAgentPanel() {
       }
 
       setCreatedAgent(agent)
+      addAgent(agent)
       setDisplayPhone(formatPhoneForDisplay(agent.phone_number))
       setShowSuccess(true)
       toast.success("Agent created successfully!")

@@ -8,9 +8,13 @@ interface AgentsState {
   loading: boolean
   error: string | null
   lastFetched: number | null
-  fetchAgents: () => Promise<void>
+  fetchAgents: (force?: boolean) => Promise<void>
+  addAgent: (agent: Agent) => void
+  updateAgent: (id: string, updates: Partial<Agent>) => void
+  removeAgent: (id: string) => void
   getAgent: (id: string) => Agent | undefined
   setAgents: (agents: Agent[]) => void
+  invalidate: () => void
 }
 
 const CACHE_TTL = 5 * 60 * 1000
@@ -23,9 +27,9 @@ export const useAgentsStore = create<AgentsState>()(
       error: null,
       lastFetched: null,
 
-      fetchAgents: async () => {
+      fetchAgents: async (force?: boolean) => {
         const { lastFetched, agents } = get()
-        if (lastFetched && Date.now() - lastFetched < CACHE_TTL && agents.length > 0) {
+        if (!force && lastFetched && Date.now() - lastFetched < CACHE_TTL && agents.length > 0) {
           return
         }
 
@@ -38,6 +42,22 @@ export const useAgentsStore = create<AgentsState>()(
         }
       },
 
+      addAgent: (agent: Agent) => {
+        set(state => ({ agents: [...state.agents, agent], lastFetched: Date.now() }))
+      },
+
+      updateAgent: (id: string, updates: Partial<Agent>) => {
+        set(state => ({
+          agents: state.agents.map(a => a.id === id ? { ...a, ...updates } : a),
+        }))
+      },
+
+      removeAgent: (id: string) => {
+        set(state => ({
+          agents: state.agents.filter(a => a.id !== id),
+        }))
+      },
+
       getAgent: (id: string) => {
         return get().agents.find(a => a.id === id)
       },
@@ -45,10 +65,15 @@ export const useAgentsStore = create<AgentsState>()(
       setAgents: (agents: Agent[]) => {
         set({ agents, lastFetched: Date.now() })
       },
+
+      invalidate: () => {
+        set({ lastFetched: null })
+      },
     }),
     {
       name: 'speakops-agents',
-      partialize: (state) => ({ agents: state.agents, lastFetched: state.lastFetched }),
+      // Only persist agents list, NOT lastFetched — every page load should fetch fresh
+      partialize: (state) => ({ agents: state.agents }),
     }
   )
 )
