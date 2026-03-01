@@ -147,19 +147,19 @@ export function SettingsPanel() {
             </div>
           </CardHeader>
           <CardContent>
-            {billing?.tier === 'free' ? (
+            {(!billing || billing.tier === 'free') ? (
               <p className="text-sm text-muted-foreground">
                 You are on the <strong>Free</strong> plan. Upgrade to unlock more agents, channels, and higher usage limits.
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                You are on the <strong>{TIER_LABELS[billing?.tier ?? 'free']}</strong> plan.
+                You are on the <strong>{TIER_LABELS[billing.tier]}</strong> plan.
                 Manage your subscription, download invoices, or update payment details below.
               </p>
             )}
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            {billing?.tier === 'free' && (
+            {(!billing || billing.tier === 'free') && (
               <>
                 <Button onClick={() => handleUpgrade('pro')} disabled={billingLoading}>
                   Upgrade to Pro
