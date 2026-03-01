@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { fetchDocuments, uploadFiles, fetchCurrentUser, deleteDocument, getDocumentUrl, getDocumentStatus } from "@/lib/api-client"
+import { uploadFiles, fetchCurrentUser, deleteDocument, getDocumentUrl, getDocumentStatus } from "@/lib/api-client"
+import { useDocumentsStore } from "@/stores/documentsStore"
 import { UserDocument } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -48,9 +49,8 @@ function isImage(fileType: string, fileName: string) {
 }
 
 export function DocumentsPanel() {
-  const [documents, setDocuments] = useState<UserDocument[]>([])
+  const { documents, loading, fetchDocuments: loadDocs, refresh, removeDocument } = useDocumentsStore()
   const [organizationId, setOrganizationId] = useState<string | undefined>()
-  const [loading, setLoading] = useState(true)
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([])
   const processingRef = useRef(false)
   const queueRef = useRef<UploadItem[]>([])
@@ -69,17 +69,6 @@ export function DocumentsPanel() {
     const url = await getDocumentUrl(docId)
     urlCacheRef.current.set(docId, { url, expiresAt: Date.now() + URL_CACHE_TTL })
     return url
-  }, [])
-
-  const loadDocs = useCallback(async () => {
-    try {
-      const docs = await fetchDocuments()
-      setDocuments(docs)
-    } catch (err) {
-      console.error("Failed to load documents:", err)
-    } finally {
-      setLoading(false)
-    }
   }, [])
 
   useEffect(() => {
@@ -107,11 +96,11 @@ export function DocumentsPanel() {
           // ignore polling errors
         }
       }
-      if (changed) loadDocs()
+      if (changed) refresh()
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [documents, loadDocs])
+  }, [documents, refresh])
 
   const handlePreview = async (doc: UserDocument) => {
     setPreviewDoc(doc)
@@ -191,8 +180,8 @@ export function DocumentsPanel() {
       queueRef.current = queueRef.current.filter(i => i.status !== "done")
       setUploadQueue([...queueRef.current])
     }, 3000)
-    loadDocs()
-  }, [organizationId, loadDocs])
+    refresh()
+  }, [organizationId, refresh])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return
@@ -206,8 +195,8 @@ export function DocumentsPanel() {
     try {
       await deleteDocument(docId)
       urlCacheRef.current.delete(docId)
+      removeDocument(docId)
       toast.success("Document deleted")
-      loadDocs()
     } catch (err: any) {
       toast.error(err.message || "Failed to delete document")
     }

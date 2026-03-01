@@ -25,20 +25,21 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const isUser = role === 'user'
 
-  const { text, images } = React.useMemo(() => {
-    if (!content) return { text: '', images: [] }
+  const { text, images, files } = React.useMemo(() => {
+    if (!content) return { text: '', images: [], files: [] as MessagePart[] }
     if (typeof content === 'string') {
       // Handle BROADCAST tags for string content
-      if (isUser) return { text: content, images: [] }
+      if (isUser) return { text: content, images: [], files: [] as MessagePart[] }
       const match = content.match(/\[BROADCAST\]([\s\S]*?)\[\/BROADCAST\]/)
-      if (match) return { text: (match[1] || '').trim(), images: [] }
-      return { text: content.replace(/\[\/?BROADCAST\]/g, '').trim(), images: [] }
+      if (match) return { text: (match[1] || '').trim(), images: [], files: [] as MessagePart[] }
+      return { text: content.replace(/\[\/?BROADCAST\]/g, '').trim(), images: [], files: [] as MessagePart[] }
     }
     
     // Handle MessagePart[]
     const textParts = content.filter(p => p.type === 'text').map(p => (p as any).text).join('\n')
     const imageParts = content.filter(p => p.type === 'image' || p.type === 'image_url')
-    return { text: textParts, images: imageParts }
+    const fileParts = content.filter(p => p.type === 'file_url')
+    return { text: textParts, images: imageParts, files: fileParts }
   }, [content, isUser])
 
   return (
@@ -86,6 +87,16 @@ export function ChatMessage({
                     className="max-h-60 object-contain"
                   />
                 )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {files.length > 0 && (
+          <div className="flex flex-col gap-1 mb-1">
+            {files.map((file, i) => (
+              <div key={i} className="text-xs rounded-md border px-2 py-1 bg-background/70">
+                {(file as any).name || 'File attachment'} ({(file as any).mimeType || 'application/octet-stream'})
               </div>
             ))}
           </div>

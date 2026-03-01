@@ -87,10 +87,10 @@ export const useConversationsStore = create<ConversationsState>()(
     }),
     {
       name: 'speakops-conversations',
+      // Only persist data, NOT lastFetched — every page load should fetch fresh
       partialize: (state) => ({
         evaConversations: state.evaConversations,
         messages: state.messages,
-        lastFetched: state.lastFetched,
       }),
     }
   )

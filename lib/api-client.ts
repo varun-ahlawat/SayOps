@@ -17,6 +17,25 @@ import type {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
 
+function stripBroadcastTags(content: string): string {
+  const openTag = "[BROADCAST]"
+  const closeTag = "[/BROADCAST]"
+  const openIndex = content.indexOf(openTag)
+
+  if (openIndex === -1) {
+    return content
+  }
+
+  const afterOpen = content.slice(openIndex + openTag.length)
+  const closeIndex = afterOpen.indexOf(closeTag)
+
+  if (closeIndex !== -1) {
+    return afterOpen.slice(0, closeIndex).trim()
+  }
+
+  return afterOpen.replaceAll(closeTag, "").trim()
+}
+
 /** Get auth headers for API calls. */
 async function getAuthHeaders(): Promise<HeadersInit> {
   const user = auth.currentUser
@@ -292,9 +311,15 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
     if (typeof parsedToolResult === 'string') {
       try { parsedToolResult = JSON.parse(parsedToolResult) } catch(e) {}
     }
+
+    const hydratedContent =
+      typeof m.content === "string"
+        ? stripBroadcastTags(m.content)
+        : m.content
     
     return {
       ...m,
+      content: hydratedContent,
       tool_calls: Array.isArray(parsedToolCalls) ? parsedToolCalls : null,
       tool_result: parsedToolResult
     }
@@ -396,6 +421,45 @@ export async function listWhatsAppAccounts(): Promise<{ id: string; name: string
 
 export async function disconnectWhatsAppAccount(phoneNumberId: string): Promise<void> {
   await apiFetch<{ success: boolean }>(`/integrations/whatsapp/${phoneNumberId}`, {
+    method: "DELETE",
+  })
+}
+
+// ---- Agent Channels ----
+
+export interface AgentChannelBinding {
+  id: string
+  agent_id: string
+  organization_id: string
+  channel: string
+  account_id: string
+  account_name: string | null
+  is_active: boolean
+  webhook_subscribed: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type EnableChannelResult =
+  | { status: 'success'; channel: AgentChannelBinding }
+  | { status: 'needs_oauth'; oauthUrl: string }
+  | { status: 'needs_selection'; accounts: { id: string; name: string | null }[] }
+  | { status: 'error'; error: string }
+
+export async function getAgentChannels(agentId: string): Promise<AgentChannelBinding[]> {
+  const res = await apiFetch<{ channels: AgentChannelBinding[] }>(`/agents/${agentId}/channels`)
+  return res.channels || []
+}
+
+export async function enableAgentChannel(agentId: string, channel: string, accountId?: string): Promise<EnableChannelResult> {
+  return apiFetch<EnableChannelResult>(`/agents/${agentId}/channels/${channel}/enable`, {
+    method: "POST",
+    body: JSON.stringify(accountId ? { accountId } : {}),
+  })
+}
+
+export async function disableAgentChannel(agentId: string, channel: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}/channels/${channel}/disable`, {
     method: "DELETE",
   })
 }

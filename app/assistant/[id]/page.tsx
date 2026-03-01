@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -10,18 +10,18 @@ import { fetchMessages, chatWithAgent, createConversation } from "@/lib/api-clie
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { 
-  IconSend2, 
-  IconLoader2, 
-  IconTool, 
-  IconDatabase, 
-  IconCalendar, 
+import {
+  IconLoader2,
+  IconTool,
+  IconDatabase,
+  IconCalendar,
   IconMail,
   IconMessageChatbot,
   IconChevronLeft
 } from "@tabler/icons-react"
 import { Message } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { ChatInput } from "@/components/chat/ChatInput"
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
   query_db: <IconDatabase className="size-3" />,
@@ -41,12 +41,10 @@ export default function AssistantChatPage() {
   const { user, loading: authLoading } = useAuth()
   
   const [messages, setMessages] = useState<any[]>([])
-  const [input, setInput] = useState("")
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  
+
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -75,18 +73,14 @@ export default function AssistantChatPage() {
     }
   }, [messages, sending])
 
-  async function handleSend() {
-    const prompt = input.trim()
-    if (!prompt || sending) return
-
-    setInput("")
-    setMessages((prev) => [...prev, { role: "user", content: prompt }])
+  const handleSend = useCallback(async (content: string, _files: File[]) => {
+    setMessages((prev) => [...prev, { role: "user", content }])
     setSending(true)
 
     try {
       // Ensure we have a concrete Eva conversation backing this assistant thread
       const conversation = await createConversation("super", "reuse")
-      const res = await chatWithAgent(prompt, "super", undefined, conversation.id)
+      const res = await chatWithAgent(content, "super", undefined, conversation.id)
       setMessages((prev) => [
         ...prev,
         {
@@ -103,7 +97,7 @@ export default function AssistantChatPage() {
     } finally {
       setSending(false)
     }
-  }
+  }, [])
 
   if (authLoading || loading) return <div className="flex h-screen items-center justify-center">Loading...</div>
 
@@ -162,23 +156,13 @@ export default function AssistantChatPage() {
           </ScrollArea>
 
           {/* Chat Input */}
-          <div className="p-6 border-t bg-background">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-end gap-3 bg-muted/50 border rounded-2xl p-2 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-                  placeholder="Analyze our last quarter..."
-                  rows={1}
-                  className="flex-1 resize-none bg-transparent border-none px-3 py-2 text-sm focus:outline-none min-h-[40px] max-h-40"
-                />
-                <Button size="icon" onClick={handleSend} disabled={!input.trim() || sending} className="size-10 rounded-xl">
-                  <IconSend2 className="size-5" />
-                </Button>
-              </div>
-            </div>
+          <div className="max-w-4xl mx-auto w-full">
+            <ChatInput
+              onSend={handleSend}
+              isLoading={sending}
+              placeholder="Analyze our last quarter..."
+              loadingPlaceholder="Type to queue a message..."
+            />
           </div>
         </div>
       </SidebarInset>

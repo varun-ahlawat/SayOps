@@ -4,13 +4,6 @@ import { chatWithAgent, fetchMessages, createConversation } from '@/lib/api-clie
 import { useConversationsStore } from './conversationsStore'
 import type { MessagePart } from '@/lib/types'
 
-export interface Attachment {
-  id: string
-  file: File
-  previewUrl: string
-  type: 'image'
-}
-
 export interface EvaMessage {
   id: string
   role: 'user' | 'assistant' | 'tool'
@@ -19,21 +12,14 @@ export interface EvaMessage {
   toolCalls?: { name: string; args: any; result?: any; status: 'pending' | 'running' | 'completed' | 'error' }[]
 }
 
-export interface QueuedMessage {
-  id: string
-  content: string | MessagePart[]
-}
-
 interface EvaChatState {
   isOpen: boolean
   isFullscreen: boolean
   conversationId: string | null
   messages: EvaMessage[]
   isLoading: boolean
-  queuedMessages: QueuedMessage[]
   error: string | null
   pendingNavigation: { view: string; agentId?: string } | null
-  attachments: Attachment[]
   size: { width: number; height: number }
 
   toggleOpen: () => void
@@ -41,11 +27,7 @@ interface EvaChatState {
   setFullscreen: (fullscreen: boolean) => void
   toggleFullscreen: () => void
   setSize: (size: { width: number; height: number }) => void
-  sendMessage: (content: string) => Promise<void>
-  addAttachment: (file: File) => void
-  removeAttachment: (id: string) => void
-  clearAttachments: () => void
-  removeQueuedMessage: (id: string) => void
+  sendMessage: (content: string, files: File[]) => Promise<void>
   startNewChat: () => void
   loadConversation: (conversationId: string, messages: EvaMessage[]) => void
   loadConversationFromDB: (conversationId: string) => Promise<void>
@@ -77,10 +59,8 @@ const useEvaChatStore = create<EvaChatState>()(
       conversationId: null,
       messages: [],
       isLoading: false,
-      queuedMessages: [],
       error: null,
       pendingNavigation: null,
-      attachments: [],
       size: { width: 380, height: 520 },
 
       toggleOpen: () => {
@@ -103,57 +83,24 @@ const useEvaChatStore = create<EvaChatState>()(
         set({ size })
       },
 
-      addAttachment: (file: File) => {
-        const id = generateId()
-        const previewUrl = URL.createObjectURL(file)
-        set(state => ({
-          attachments: [...state.attachments, { id, file, previewUrl, type: 'image' }]
-        }))
-      },
-
-      removeAttachment: (id: string) => {
-        set(state => {
-          const attachment = state.attachments.find(a => a.id === id)
-          if (attachment) URL.revokeObjectURL(attachment.previewUrl)
-          return {
-            attachments: state.attachments.filter(a => a.id !== id)
-          }
-        })
-      },
-
-      clearAttachments: () => {
-        set(state => {
-          state.attachments.forEach(a => URL.revokeObjectURL(a.previewUrl))
-          return { attachments: [] }
-        })
-      },
-
-      removeQueuedMessage: (id: string) => {
-        set((state) => ({
-          queuedMessages: state.queuedMessages.filter((m) => m.id !== id),
-        }))
-      },
-
-      sendMessage: async (content: string) => {
-        if (!content.trim() && get().attachments.length === 0) return
+      sendMessage: async (content: string, files: File[]) => {
+        if (!content.trim() && files.length === 0) return
 
         const trimmed = content.trim()
-        const currentAttachments = get().attachments
 
-        // Prepare message content (string or MessagePart[])
+        // Build message content (string or MessagePart[])
         let messageContent: string | MessagePart[] = trimmed
-        if (currentAttachments.length > 0) {
+        if (files.length > 0) {
           const parts: MessagePart[] = []
           if (trimmed) {
             parts.push({ type: 'text', text: trimmed })
           }
-          
-          for (const att of currentAttachments) {
+          for (const file of files) {
             try {
-              const base64 = await fileToBase64(att.file)
+              const base64 = await fileToBase64(file)
               parts.push({
                 type: 'image',
-                mimeType: att.file.type,
+                mimeType: file.type,
                 data: base64
               })
             } catch (err) {
@@ -163,17 +110,6 @@ const useEvaChatStore = create<EvaChatState>()(
           messageContent = parts
         }
 
-        // Clear attachments immediately so UI resets
-        get().clearAttachments()
-
-        if (get().isLoading) {
-          const queued: QueuedMessage = { id: generateId(), content: messageContent }
-          set((state) => ({
-            queuedMessages: [...state.queuedMessages, queued],
-          }))
-          return
-        }
-
         await processMessage(messageContent, set, get)
       },
 
@@ -181,9 +117,7 @@ const useEvaChatStore = create<EvaChatState>()(
         set({
           conversationId: null,
           messages: [],
-          queuedMessages: [],
           error: null,
-          attachments: [],
         })
       },
 
@@ -207,7 +141,7 @@ const useEvaChatStore = create<EvaChatState>()(
               status: 'completed' as const,
             })),
           }))
-          set({ conversationId, messages: mapped, isLoading: false, queuedMessages: [], error: null })
+          set({ conversationId, messages: mapped, isLoading: false, error: null })
         } catch (err) {
           set({ isLoading: false, error: (err as Error).message })
         }
@@ -224,14 +158,12 @@ const useEvaChatStore = create<EvaChatState>()(
         conversationId: state.conversationId,
         messages: state.messages,
         size: state.size,
-        // isFullscreen is NOT persisted
-        // attachments are NOT persisted (transient)
       }),
     }
   )
 )
 
-/** Send a message and then drain the queue */
+/** Send a message to the API */
 async function processMessage(
   content: string | MessagePart[],
   set: (fn: (state: EvaChatState) => Partial<EvaChatState>) => void,
@@ -328,14 +260,6 @@ async function processMessage(
       isLoading: false,
       error: (err as Error).message,
     }))
-  }
-
-  const next = get().queuedMessages[0]
-  if (next) {
-    set((state) => ({
-      queuedMessages: state.queuedMessages.slice(1),
-    }))
-    await processMessage(next.content, set, get)
   }
 }
 
