@@ -209,6 +209,7 @@ const CAPABILITIES = [
   { id: "database_query", label: "Database Query", description: "Query your business database" },
   { id: "document_search", label: "Document Search", description: "Search through uploaded files" },
   { id: "memory", label: "Agent Memory", description: "Remember business-wide context" },
+  { id: "adaptive_memory", label: "Adaptive Memory", description: "Continuously learn from multimodal episodes and corrections" },
   { id: "customer_memory", label: "Customer Memory", description: "Remember specific customer details" },
   { id: "calendar_read", label: "View Calendar", description: "Check availability and events" },
   { id: "calendar_manage", label: "Manage Calendar", description: "Book and update appointments" },

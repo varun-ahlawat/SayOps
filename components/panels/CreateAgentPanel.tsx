@@ -74,7 +74,7 @@ export function CreateAgentPanel() {
     try {
       const agent = await createAgent({
         name: name.trim(),
-        capabilities: ["document_search", "memory", "customer_memory"],
+        capabilities: ["document_search", "memory", "customer_memory", "adaptive_memory"],
         system_prompt: systemPrompt.trim() || `You are a helpful AI assistant for ${name}.`,
       })
 
