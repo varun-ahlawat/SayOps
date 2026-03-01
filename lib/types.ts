@@ -64,7 +64,7 @@ export interface Conversation {
   agent_id: string
   customer_id: string | null
   member_id: string | null
-  channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram' | 'facebook' | 'whatsapp'
+  channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram' | 'facebook' | 'whatsapp' | 'telegram'
   status: 'active' | 'idle' | 'completed' | 'archived'
   started_at: string
   last_message_at: string | null
@@ -74,11 +74,12 @@ export interface Conversation {
 }
 
 export interface MessagePart {
-  type: 'text' | 'image' | 'image_url'
+  type: 'text' | 'image' | 'image_url' | 'file_url'
   text?: string
   mimeType?: string
   data?: string
   url?: string
+  name?: string
 }
 
 export interface Message {
