@@ -104,7 +104,7 @@ export function NavUser({
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <IconCreditCard />
                 Billing
               </DropdownMenuItem>
