@@ -55,6 +55,16 @@ export function SettingsPanel() {
   React.useEffect(() => {
     if (authLoading || !user) return
     loadData()
+
+    // Handle Stripe checkout redirect callbacks
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('subscribed') === 'true') {
+      toast.success("Subscription activated! Welcome to your new plan.")
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (params.get('checkout_cancelled') === 'true') {
+      toast.error("Checkout cancelled — no charge was made.")
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [authLoading, user])
 
   const loadData = async () => {
