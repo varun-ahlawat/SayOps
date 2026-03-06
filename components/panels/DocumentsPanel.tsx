@@ -6,6 +6,7 @@ import { useDocumentsStore } from "@/stores/documentsStore"
 import { UserDocument } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ interface UploadItem {
   id: string
   fileName: string
   status: "queued" | "uploading" | "done" | "error"
+  progress?: number
   error?: string
 }
 
@@ -148,7 +150,7 @@ export function DocumentsPanel() {
       if (!next) break
 
       queueRef.current = queueRef.current.map(i =>
-        i.id === next.id ? { ...i, status: "uploading" as const } : i
+        i.id === next.id ? { ...i, status: "uploading" as const, progress: 0 } : i
       )
       setUploadQueue([...queueRef.current])
 
@@ -156,9 +158,14 @@ export function DocumentsPanel() {
       if (!file) continue
 
       try {
-        await uploadFiles([file], organizationId)
+        await uploadFiles([file], organizationId, (percent) => {
+          queueRef.current = queueRef.current.map(i =>
+            i.id === next.id ? { ...i, progress: percent } : i
+          )
+          setUploadQueue([...queueRef.current])
+        })
         queueRef.current = queueRef.current.map(i =>
-          i.id === next.id ? { ...i, status: "done" as const } : i
+          i.id === next.id ? { ...i, status: "done" as const, progress: 100 } : i
         )
       } catch (err: any) {
         queueRef.current = queueRef.current.map(i =>
@@ -236,12 +243,20 @@ export function DocumentsPanel() {
         <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload Queue</p>
           {uploadQueue.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 text-sm">
-              {item.status === "uploading" && <IconLoader2 className="size-4 animate-spin text-primary" />}
-              {item.status === "queued" && <IconFile className="size-4 text-muted-foreground" />}
-              {item.status === "done" && <IconCheck className="size-4 text-green-600" />}
-              {item.status === "error" && <IconAlertCircle className="size-4 text-red-600" />}
-              <span className={item.status === "error" ? "text-red-600" : ""}>{item.fileName}</span>
+            <div key={item.id} className="flex flex-col gap-1">
+              <div className="flex items-center gap-3 text-sm">
+                {item.status === "uploading" && <IconLoader2 className="size-4 shrink-0 animate-spin text-primary" />}
+                {item.status === "queued" && <IconFile className="size-4 shrink-0 text-muted-foreground" />}
+                {item.status === "done" && <IconCheck className="size-4 shrink-0 text-green-600" />}
+                {item.status === "error" && <IconAlertCircle className="size-4 shrink-0 text-red-600" />}
+                <span className={`flex-1 truncate ${item.status === "error" ? "text-red-600" : ""}`}>{item.fileName}</span>
+                {item.status === "uploading" && (
+                  <span className="text-xs text-muted-foreground tabular-nums">{item.progress ?? 0}%</span>
+                )}
+              </div>
+              {item.status === "uploading" && (
+                <Progress value={item.progress ?? 0} className="h-1.5" />
+              )}
             </div>
           ))}
         </div>

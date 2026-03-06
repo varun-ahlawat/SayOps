@@ -162,41 +162,61 @@ export async function chatWithAgent(
 
 // ---- Documents / Upload ----
 
-export async function uploadFiles(files: File[], organizationId?: string): Promise<{ status: string; uploadId: string; documentId: string }> {
+export async function uploadFiles(
+  files: File[],
+  organizationId?: string,
+  onProgress?: (percent: number) => void
+): Promise<{ status: string; uploadId: string; documentId: string }> {
   const headers = await getAuthHeaders()
   const formData = new FormData()
-  
+
   // zl-backend expects a single 'file' field per request based on routes
   const file = files[0]
   formData.append("file", file)
-  
+
   // Add organizationId if provided
   if (organizationId) {
     formData.append("organizationId", organizationId)
   }
 
-  const res = await fetch(`${BACKEND_URL}/api/upload`, {
-    method: "POST",
-    headers: {
-      ...headers,
-      // No Content-Type for multipart
-    },
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", `${BACKEND_URL}/api/upload`)
+
+    // Set auth headers (skip Content-Type — browser sets multipart boundary)
+    Object.entries(headers).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value as string)
+    })
+
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100))
+        }
+      })
+    }
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        let message = `Upload error: ${xhr.status}`
+        try { message = JSON.parse(xhr.responseText)?.error || message } catch {}
+        return reject(new Error(message))
+      }
+      let result: any
+      try { result = JSON.parse(xhr.responseText) } catch {
+        return reject(new Error("Invalid response from server"))
+      }
+      if (result.status === "failed") {
+        return reject(new Error(result.error || "Upload processing failed"))
+      }
+      resolve(result)
+    })
+
+    xhr.addEventListener("error", () => reject(new Error("Network error during upload")))
+    xhr.addEventListener("abort", () => reject(new Error("Upload aborted")))
+
+    xhr.send(formData)
   })
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(error.error || `Upload error: ${res.status}`)
-  }
-
-  const result = await res.json()
-
-  // Backend returns HTTP 200 with status: 'failed' on processing errors
-  if (result.status === 'failed') {
-    throw new Error(result.error || 'Upload processing failed')
-  }
-
-  return result
 }
 
 export async function fetchDocuments(): Promise<UserDocument[]> {
