@@ -43,6 +43,7 @@ export function NavDocuments() {
       icon={<IconFileUpload className="size-4" />}
       showSearch
       searchPlaceholder="Search documents..."
+      onTitleClick={() => setView("documents")}
       headerAction={
         <button
           onClick={() => setView("documents")}
