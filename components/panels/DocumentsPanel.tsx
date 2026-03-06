@@ -60,6 +60,7 @@ export function DocumentsPanel() {
   const [previewDoc, setPreviewDoc] = useState<UserDocument | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState<Map<string, number>>(new Map())
 
   const urlCacheRef = useRef<Map<string, CachedUrl>>(new Map())
 
@@ -88,9 +89,11 @@ export function DocumentsPanel() {
 
     const interval = setInterval(async () => {
       let changed = false
+      const nextProgress = new Map(ocrProgress)
       for (const doc of pendingDocs) {
         try {
-          const status = await getDocumentStatus(doc.id)
+          const { status, progress } = await getDocumentStatus(doc.id)
+          nextProgress.set(doc.id, progress)
           if (status !== doc.ocr_status) {
             changed = true
           }
@@ -98,8 +101,9 @@ export function DocumentsPanel() {
           // ignore polling errors
         }
       }
+      setOcrProgress(nextProgress)
       if (changed) refresh()
-    }, 3000)
+    }, 1500)
 
     return () => clearInterval(interval)
   }, [documents, refresh])
@@ -306,7 +310,7 @@ export function DocumentsPanel() {
                   ) : (
                     <div className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-full">
                       <IconLoader2 className="size-3 animate-spin" />
-                      Processing
+                      Processing {ocrProgress.get(doc.id) ? `${ocrProgress.get(doc.id)}%` : ''}
                     </div>
                   )}
                 </div>
@@ -323,6 +327,11 @@ export function DocumentsPanel() {
                   </Button>
                 </div>
               </CardContent>
+              {(doc.ocr_status === 'pending' || doc.ocr_status === 'processing') && (
+                <div className="px-4 pb-3">
+                  <Progress value={ocrProgress.get(doc.id) ?? 0} className="h-1.5" />
+                </div>
+              )}
             </Card>
           ))
         )}
