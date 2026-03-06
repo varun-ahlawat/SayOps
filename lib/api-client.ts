@@ -235,9 +235,9 @@ export async function getDocumentUrl(docId: string): Promise<string> {
   return res.url
 }
 
-export async function getDocumentStatus(docId: string): Promise<string> {
-  const res = await apiFetch<{ status: string }>(`/upload/${docId}/status`)
-  return res.status
+export async function getDocumentStatus(docId: string): Promise<{ status: string; progress: number }> {
+  const res = await apiFetch<{ status: string; progress: number }>(`/upload/${docId}/status`)
+  return { status: res.status, progress: res.progress ?? 0 }
 }
 
 export async function fetchOrgMembers(): Promise<OrgMember[]> {
