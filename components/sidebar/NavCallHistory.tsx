@@ -24,6 +24,7 @@ export function NavCallHistory() {
       showSearch
       searchPlaceholder="Search calls..."
       defaultOpen={false}
+      onTitleClick={() => setView("history")}
       headerAction={
         <button
           onClick={() => setView("history")}
