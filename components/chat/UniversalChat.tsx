@@ -13,7 +13,6 @@ import {
   IconHistory,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, getChatSummary } from "@/lib/utils"
 import { ChatMessage } from "./ChatMessage"
@@ -187,7 +186,7 @@ export function UniversalChat({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center space-y-4">
             <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-dashed border-primary/20">
@@ -243,7 +242,7 @@ export function UniversalChat({
             <div ref={messagesEndRef} />
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       <ChatInput
         onSend={handleSendMessage}

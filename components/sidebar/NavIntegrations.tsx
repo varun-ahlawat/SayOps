@@ -59,6 +59,7 @@ export function NavIntegrations() {
       title="Integrations"
       icon={<IconPlug className="size-4" />}
       defaultOpen={false}
+      onTitleClick={() => setView("integrations")}
       headerAction={
         <button
           onClick={() => setView("integrations")}
