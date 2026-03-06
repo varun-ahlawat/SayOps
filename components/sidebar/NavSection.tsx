@@ -24,6 +24,7 @@ export interface NavSectionProps {
   searchPlaceholder?: string
   defaultOpen?: boolean
   headerAction?: React.ReactNode
+  onTitleClick?: () => void
   children: React.ReactNode
   className?: string
 }
@@ -36,6 +37,7 @@ export function NavSection({
   searchPlaceholder = "Search...",
   defaultOpen = true,
   headerAction,
+  onTitleClick,
   children,
   className,
 }: NavSectionProps) {
@@ -87,36 +89,52 @@ export function NavSection({
     >
       <SidebarGroup className={className}>
         <SidebarGroupLabel asChild>
-          <CollapsibleTrigger asChild>
-            <div className="flex items-center w-full gap-2 cursor-pointer">
-              {icon && <span className="shrink-0">{icon}</span>}
-              <span className="flex-1 text-left">{title}</span>
-              {showSearch && (
-                <span
-                  role="button"
-                  className="mr-0.5 text-muted-foreground hover:text-foreground cursor-pointer z-10"
-                  onClick={toggleSearch}
-                  title="Search"
-                >
-                  <IconSearch className="size-3.5" />
-                </span>
-              )}
-              {headerAction && (
-                <span
-                  className="mr-1 z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {headerAction}
-                </span>
-              )}
-              <IconChevronRight
-                className={cn(
-                  "size-4 transition-transform shrink-0",
-                  isOpen && "rotate-90"
-                )}
-              />
-            </div>
-          </CollapsibleTrigger>
+          <div className="flex items-center w-full gap-2">
+            {/* Title area — navigates if onTitleClick provided, otherwise toggles collapse */}
+            {onTitleClick ? (
+              <button
+                onClick={onTitleClick}
+                className="flex items-center gap-2 flex-1 text-left min-w-0"
+              >
+                {icon && <span className="shrink-0">{icon}</span>}
+                <span className="truncate">{title}</span>
+              </button>
+            ) : (
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 flex-1 text-left min-w-0">
+                  {icon && <span className="shrink-0">{icon}</span>}
+                  <span className="truncate">{title}</span>
+                </button>
+              </CollapsibleTrigger>
+            )}
+
+            {showSearch && (
+              <span
+                role="button"
+                className="mr-0.5 text-muted-foreground hover:text-foreground cursor-pointer z-10"
+                onClick={toggleSearch}
+                title="Search"
+              >
+                <IconSearch className="size-3.5" />
+              </span>
+            )}
+            {headerAction && (
+              <span className="mr-1 z-10">
+                {headerAction}
+              </span>
+            )}
+            {/* Chevron always toggles collapse */}
+            <CollapsibleTrigger asChild>
+              <button className="shrink-0">
+                <IconChevronRight
+                  className={cn(
+                    "size-4 transition-transform",
+                    isOpen && "rotate-90"
+                  )}
+                />
+              </button>
+            </CollapsibleTrigger>
+          </div>
         </SidebarGroupLabel>
 
         <CollapsibleContent>
