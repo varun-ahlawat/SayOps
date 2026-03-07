@@ -157,9 +157,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               <div className="mt-auto">
                 <SidebarMenu className="px-2 pb-1">
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => setView("billing")} className="gap-2">
+                    <SidebarMenuButton onClick={() => setView("payments")} className="gap-2">
                       <IconCreditCard className="size-4 text-violet-500" />
-                      <span>Billing</span>
+                      <span>Payments</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
