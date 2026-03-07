@@ -129,7 +129,11 @@ export function DocumentsPanel() {
       const a = document.createElement('a')
       a.href = url
       a.download = doc.file_name
+      a.target = "_blank"
+      a.rel = "noopener noreferrer"
+      document.body.appendChild(a)
       a.click()
+      a.remove()
     } catch (err: any) {
       toast.error(err.message || 'Failed to get download URL')
     }
@@ -370,7 +374,14 @@ export function DocumentsPanel() {
                   <img src={previewUrl} alt={previewDoc.file_name} className="max-w-full max-h-full object-contain rounded" />
                 </div>
               ) : (
-                <iframe src={previewUrl} className="w-full h-full border-0" title={previewDoc.file_name} />
+                <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Preview is not available for this file type.
+                  </p>
+                  <Button variant="outline" onClick={() => window.open(previewUrl, "_blank")}>
+                    Open File
+                  </Button>
+                </div>
               )
             ) : null}
           </div>

@@ -234,6 +234,9 @@ export async function deleteDocument(documentId: string): Promise<void> {
 
 export async function getDocumentUrl(docId: string): Promise<string> {
   const res = await apiFetch<{ url: string }>(`/upload/${docId}`)
+  if (!res?.url) {
+    throw new Error("Document URL unavailable")
+  }
   return res.url
 }
 
