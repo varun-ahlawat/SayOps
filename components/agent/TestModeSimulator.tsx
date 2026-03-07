@@ -97,7 +97,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
 
       const assistantMsg: TestMessage = {
         role: 'assistant',
-        content: response.broadcast || response.output,
+        content: response.output,
         toolCalls: response.toolCalls
       }
       setMessages(prev => [...prev, assistantMsg])

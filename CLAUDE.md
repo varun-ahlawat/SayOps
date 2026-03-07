@@ -164,7 +164,7 @@ Eva is the platform's AI assistant (backed by the `super` agent on the backend).
 **Message flow:**
 1. User types → sends via `chatWithAgent(prompt, 'super', undefined, conversationId, history)`
 2. If Eva is already thinking, message queues automatically (drained when ready)
-3. Backend returns `{ toolCalls, broadcast, output }`
+3. Backend returns `{ toolCalls, output }` (plus a `broadcast` compatibility alias)
 4. If `navigate_to_page` tool called → stored in `pendingNavigation` → panel switches via `setView()`
 
 ### Agent Detail Page (`/agents/[agentId]`)
@@ -196,7 +196,7 @@ Agents can be assigned connectors (Google Calendar, Gmail, HubSpot) via checkbox
 - **shadcn/ui:** All UI primitives live in `components/ui/`. Use existing components before creating new ones.
 - **Icons:** Use `@tabler/icons-react` consistently.
 - **Audio:** Call recordings are mulaw 8kHz from GCS, streamed via signed URLs.
-- **Broadcast tags:** Backend may send `[BROADCAST]...[/BROADCAST]` tags; frontend strips them, shows `broadcast || output`.
+- **Assistant payloads:** Backend returns `broadcast` as a compatibility alias of `output`; use plain assistant text.
 
 ## Environment Variables
 - `NEXT_PUBLIC_BACKEND_URL` or `AGENT_BACKEND_URL`: URL of `zl-backend` (default `http://localhost:3001`)

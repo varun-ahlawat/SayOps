@@ -85,7 +85,7 @@ export default function AssistantChatPage() {
         ...prev,
         {
           role: "assistant",
-          content: res.broadcast || res.output,
+          content: res.output,
           tool_calls: res.toolCalls,
         },
       ])

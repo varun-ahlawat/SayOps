@@ -225,7 +225,7 @@ async function processMessage(
     const assistantMsg: EvaMessage = {
       id: generateId(),
       role: 'assistant',
-      content: response.broadcast || response.output,
+      content: response.output,
       timestamp: Date.now(),
       toolCalls: response.toolCalls?.map((t) => ({
         name: t.name,

@@ -19,25 +19,6 @@ import type {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
 
-function stripBroadcastTags(content: string): string {
-  const openTag = "[BROADCAST]"
-  const closeTag = "[/BROADCAST]"
-  const openIndex = content.indexOf(openTag)
-
-  if (openIndex === -1) {
-    return content
-  }
-
-  const afterOpen = content.slice(openIndex + openTag.length)
-  const closeIndex = afterOpen.indexOf(closeTag)
-
-  if (closeIndex !== -1) {
-    return afterOpen.slice(0, closeIndex).trim()
-  }
-
-  return afterOpen.replaceAll(closeTag, "").trim()
-}
-
 /** Get auth headers for API calls. */
 async function getAuthHeaders(): Promise<HeadersInit> {
   const user = auth.currentUser
@@ -337,10 +318,7 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
       try { parsedToolResult = JSON.parse(parsedToolResult) } catch(e) {}
     }
 
-    const hydratedContent =
-      typeof m.content === "string"
-        ? stripBroadcastTags(m.content)
-        : m.content
+    const hydratedContent = m.content
     
     return {
       ...m,

@@ -28,11 +28,8 @@ export function ChatMessage({
   const { text, images, files } = React.useMemo(() => {
     if (!content) return { text: '', images: [], files: [] as MessagePart[] }
     if (typeof content === 'string') {
-      // Handle BROADCAST tags for string content
       if (isUser) return { text: content, images: [], files: [] as MessagePart[] }
-      const match = content.match(/\[BROADCAST\]([\s\S]*?)\[\/BROADCAST\]/)
-      if (match) return { text: (match[1] || '').trim(), images: [], files: [] as MessagePart[] }
-      return { text: content.replace(/\[\/?BROADCAST\]/g, '').trim(), images: [], files: [] as MessagePart[] }
+      return { text: content.trim(), images: [], files: [] as MessagePart[] }
     }
     
     // Handle MessagePart[]
