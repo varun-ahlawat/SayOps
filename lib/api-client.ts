@@ -13,6 +13,8 @@ import type {
   StripePayment,
   BusinessSettings,
   BillingStatus,
+  UserSettings,
+  NotificationPreferences,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -595,6 +597,50 @@ export async function createBillingPortal(): Promise<string> {
     method: "POST",
   })
   return res.url
+}
+
+// ---- Account Settings ----
+
+export async function fetchUserSettings(): Promise<UserSettings | null> {
+  try {
+    const res = await apiFetch<{ settings: UserSettings | null }>("/user-settings")
+    return res.settings
+  } catch {
+    return null
+  }
+}
+
+export async function updateUserSettings(payload: {
+  display_name?: string
+  profile_image_url?: string
+  timezone?: string
+}): Promise<UserSettings> {
+  const res = await apiFetch<{ settings: UserSettings }>("/user-settings", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })
+  return res.settings
+}
+
+export async function fetchNotificationPreferences(): Promise<NotificationPreferences | null> {
+  try {
+    const res = await apiFetch<{ preferences: NotificationPreferences | null }>("/notification-preferences")
+    return res.preferences
+  } catch {
+    return null
+  }
+}
+
+export async function updateNotificationPreferences(payload: {
+  email_agent_created: boolean
+  email_integration_linked: boolean
+  email_billing_alerts: boolean
+}): Promise<NotificationPreferences> {
+  const res = await apiFetch<{ preferences: NotificationPreferences }>("/notification-preferences", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })
+  return res.preferences
 }
 
 // ---- Stats (To be implemented in backend if missing) ----

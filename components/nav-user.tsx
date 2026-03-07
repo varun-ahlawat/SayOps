@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import {
   IconCreditCard,
   IconDotsVertical,
@@ -30,6 +29,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useAuth } from "@/lib/auth-context"
+import { useViewParams } from "@/hooks/useViewParams"
 
 export function NavUser({
   user,
@@ -42,7 +42,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
-  const router = useRouter()
+  const { setView } = useViewParams()
 
   const initials = user.name
     .split(" ")
@@ -53,7 +53,7 @@ export function NavUser({
 
   const handleLogout = async () => {
     await signOut()
-    router.push("/")
+    window.location.href = "/"
   }
 
   return (
@@ -100,15 +100,15 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView("account")}>
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <DropdownMenuItem onClick={() => setView("billing")}>
                 <IconCreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView("notifications")}>
                 <IconNotification />
                 Notifications
               </DropdownMenuItem>

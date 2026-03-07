@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard } from "@tabler/icons-react"
+import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard, IconBell, IconUserCircle } from "@tabler/icons-react"
 import { NavUser } from "@/components/nav-user"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -157,9 +157,21 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               <div className="mt-auto">
                 <SidebarMenu className="px-2 pb-1">
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => setView("payments")} className="gap-2">
+                    <SidebarMenuButton onClick={() => setView("account")} className="gap-2">
+                      <IconUserCircle className="size-4 text-blue-500" />
+                      <span>Account</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => setView("notifications")} className="gap-2">
+                      <IconBell className="size-4 text-amber-500" />
+                      <span>Notifications</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => setView("billing")} className="gap-2">
                       <IconCreditCard className="size-4 text-violet-500" />
-                      <span>Payments</span>
+                      <span>Billing</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
