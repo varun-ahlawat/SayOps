@@ -268,7 +268,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
             <FormField
               control={form.control}
               name="name"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Agent Name</FormLabel>
                   <FormControl>
@@ -284,7 +284,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
             <FormField
               control={form.control}
               name="description"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
@@ -300,7 +300,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
             <FormField
               control={form.control}
               name="system_prompt"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>System Prompt</FormLabel>
                   <FormControl>
@@ -346,7 +346,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
             <FormField
               control={form.control}
               name="has_knowledge_base"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Knowledge Base Access</FormLabel>
@@ -367,7 +367,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
             <FormField
               control={form.control}
               name="enabled_connectors"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Enabled Connectors</FormLabel>
                   <FormDescription>Select which third-party tools this agent can use.</FormDescription>
@@ -398,7 +398,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                         key={platform.id}
                         control={form.control}
                         name="platforms"
-                        render={({ field }) => (
+                        render={({ field }: { field: any }) => (
                           <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                             <FormControl>
                               <Checkbox
@@ -408,7 +408,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                                   if (checked) {
                                     field.onChange([...current, platform.id])
                                   } else {
-                                    field.onChange(current.filter((v) => v !== platform.id))
+                                    field.onChange(current.filter((v: string) => v !== platform.id))
                                   }
                                 }}
                               />

@@ -5,9 +5,6 @@ import * as LabelPrimitive from '@radix-ui/react-label'
 import { Slot } from '@radix-ui/react-slot'
 import {
   Controller,
-  ControllerProps,
-  FieldPath,
-  FieldValues,
   FormProvider,
   useFormContext,
 } from 'react-hook-form'
@@ -17,10 +14,15 @@ import { Label } from '@/components/ui/label'
 
 const Form = FormProvider
 
-type FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
-> = {
+type FieldValues = Record<string, unknown>
+type FieldPath<TFieldValues extends FieldValues = FieldValues> = string
+type ControllerProps<TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>> = {
+  control: unknown
+  name: TName
+  render: (props: { field: any }) => React.ReactElement
+}
+
+type FormFieldContextValue<TName extends string = string> = {
   name: TName
 }
 
@@ -44,7 +46,7 @@ const FormField = <
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
+  const { getFieldState, formState } = useFormContext() as any
 
   const fieldState = getFieldState(fieldContext.name, formState)
 

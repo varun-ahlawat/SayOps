@@ -32,6 +32,21 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { fetchMessages, fetchRecordingUrl } from "@/lib/api-client"
 import { Message } from "@/lib/types"
 
+type CallHistoryEntryWithTurns = {
+  id: string
+  timestamp: string
+  caller_phone: string
+  summary: string | { summary?: string } | null
+}
+
+function messageToText(content: Message["content"]): string {
+  if (typeof content === "string") return content
+  if (!content || !Array.isArray(content)) return ""
+  return content
+    .filter((part) => part.type === "text")
+    .map((part) => part.text ?? "")
+    .join("\n")
+}
 
 function CallRow({ call }: { call: any }) {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -150,7 +165,7 @@ function CallRow({ call }: { call: any }) {
                               : "bg-primary/10"
                           }`}
                         >
-                          {turn.content}
+                          {messageToText(turn.content)}
                         </div>
                       </div>
                     ))

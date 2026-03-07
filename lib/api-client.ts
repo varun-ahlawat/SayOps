@@ -382,6 +382,10 @@ export async function getIntegrationConnectUrl(provider: 'google' | 'gmail' | 'f
   return res.url
 }
 
+export async function getGoogleConnectUrl(): Promise<string> {
+  return getIntegrationConnectUrl("google")
+}
+
 export async function disconnectIntegration(provider: string): Promise<void> {
   await apiFetch<{ success: boolean }>(`/integrations/${provider}`, {
     method: "DELETE",

@@ -51,9 +51,13 @@ export interface Agent {
   platforms?: string[]
   model: string
   max_steps: number
+  max_call_time?: number
   max_tokens: number | null
   is_active: boolean
   phone_number: string | null
+  business_hours_enabled?: boolean
+  business_hours_start?: string | null
+  business_hours_end?: string | null
   created_at: string
   updated_at: string
 }
@@ -92,6 +96,11 @@ export interface Message {
   tool_name: string | null
   tool_result: any | null
   created_at: string
+}
+
+export interface ConversationTurn {
+  speaker: "User" | "Assistant" | string
+  text: string
 }
 
 export interface AgentExecution {

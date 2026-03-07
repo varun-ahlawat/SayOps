@@ -286,6 +286,15 @@ export function AgentSettings({ agent }: { agent: Agent }) {
   const [escalationRules, setEscalationRules] = React.useState(agent.escalation_rules || "")
   const [knowledgeBase, setKnowledgeBase] = React.useState(agent.knowledge_base || "")
   const [maxCallTime, setMaxCallTime] = React.useState(String(agent.max_call_time || 300))
+  const [businessHoursEnabled, setBusinessHoursEnabled] = React.useState(
+    agent.business_hours_enabled ?? false
+  )
+  const [businessHoursStart, setBusinessHoursStart] = React.useState(
+    agent.business_hours_start ?? "09:00"
+  )
+  const [businessHoursEnd, setBusinessHoursEnd] = React.useState(
+    agent.business_hours_end ?? "17:00"
+  )
   const [isActive, setIsActive] = React.useState(agent.is_active)
   const [saving, setSaving] = React.useState(false)
 
@@ -299,6 +308,9 @@ export function AgentSettings({ agent }: { agent: Agent }) {
         escalation_rules: escalationRules,
         knowledge_base: knowledgeBase,
         max_call_time: Number(maxCallTime),
+        business_hours_enabled: businessHoursEnabled,
+        business_hours_start: businessHoursEnabled ? businessHoursStart : null,
+        business_hours_end: businessHoursEnabled ? businessHoursEnd : null,
         is_active: isActive,
       })
       toast.success("Settings saved successfully")

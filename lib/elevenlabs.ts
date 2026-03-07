@@ -19,7 +19,8 @@ export async function speechToText(audioBuffer: Buffer): Promise<string> {
   const { apiKey } = getConfig()
 
   const formData = new FormData()
-  const blob = new Blob([audioBuffer], { type: "audio/wav" })
+  const bytes = new Uint8Array(audioBuffer)
+  const blob = new Blob([bytes], { type: "audio/wav" })
   formData.append("file", blob, "audio.wav")
   formData.append("model_id", "scribe_v1")
 
