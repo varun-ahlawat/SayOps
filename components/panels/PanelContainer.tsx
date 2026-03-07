@@ -14,6 +14,7 @@ import { NotificationsPanel } from "./NotificationsPanel"
 import { AgentDetailPanel } from "./AgentDetailPanel"
 import { CreateAgentPanel } from "./CreateAgentPanel"
 import { BillingPanel } from "./PaymentsPanel"
+import { SubscriptionPanel } from "./SubscriptionPanel"
 
 function PanelContainerInner() {
   const { view, agentId } = useViewParams()
@@ -28,7 +29,7 @@ function PanelContainerInner() {
 
   // Track visited panels for lazy mounting
   useEffect(() => {
-    const normalizedView = view === "settings" ? "account" : view === "payments" ? "billing" : view
+    const normalizedView = view === "settings" ? "account" : view
     const key = normalizedView === "agent" ? "agent" : normalizedView
     setVisited((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
   }, [view])
@@ -68,7 +69,10 @@ function PanelContainerInner() {
       <Panel active={view === "create-agent"} visited={visited.has("create-agent")}>
         <CreateAgentPanel />
       </Panel>
-      <Panel active={view === "billing" || view === "payments"} visited={visited.has("billing")}>
+      <Panel active={view === "billing"} visited={visited.has("billing")}>
+        <SubscriptionPanel />
+      </Panel>
+      <Panel active={view === "payments"} visited={visited.has("payments")}>
         <BillingPanel />
       </Panel>
     </>
