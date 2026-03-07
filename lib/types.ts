@@ -211,6 +211,28 @@ export interface BillingStatus {
   hasActiveSubscription: boolean
 }
 
+export interface UserSettings {
+  id: string
+  organization_id: string
+  member_id: string
+  display_name: string | null
+  profile_image_url: string | null
+  timezone: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationPreferences {
+  id: string
+  organization_id: string
+  member_id: string
+  email_agent_created: boolean
+  email_integration_linked: boolean
+  email_billing_alerts: boolean
+  created_at: string
+  updated_at: string
+}
+
 // Chat interface
 export interface ChatResponse {
   output: string
