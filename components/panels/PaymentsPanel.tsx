@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardFooter,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -21,15 +20,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-import {
-  fetchPayments,
-  refundPayment,
-  fetchBillingStatus,
-  createBillingCheckout,
-  createBillingPortal,
-} from "@/lib/api-client"
+import { fetchPayments, refundPayment } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
-import type { BillingStatus, StripePayment } from "@/lib/types"
+import type { StripePayment } from "@/lib/types"
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline",
@@ -47,13 +40,6 @@ const STATUS_LABEL: Record<string, string> = {
   refunded: "Refunded",
   disputed: "Disputed",
   cancelled: "Cancelled",
-}
-
-const TIER_LABELS: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Enterprise",
 }
 
 function formatAmount(amount: number, currency: string) {
@@ -76,66 +62,24 @@ function formatDate(dateStr: string) {
 
 export function BillingPanel() {
   const { user, loading: authLoading } = useAuth()
-  const [billing, setBilling] = React.useState<BillingStatus | null>(null)
   const [payments, setPayments] = React.useState<StripePayment[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [billingLoading, setBillingLoading] = React.useState(false)
   const [refundingId, setRefundingId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (authLoading || !user) return
     loadData()
-
-    const params = new URLSearchParams(window.location.search)
-    if (params.get("subscribed") === "true") {
-      toast.success("Subscription activated.")
-      params.delete("subscribed")
-      const query = params.toString()
-      window.history.replaceState({}, "", query ? `${window.location.pathname}?${query}` : window.location.pathname)
-    } else if (params.get("checkout_cancelled") === "true") {
-      toast.error("Checkout cancelled. No charge was made.")
-      params.delete("checkout_cancelled")
-      const query = params.toString()
-      window.history.replaceState({}, "", query ? `${window.location.pathname}?${query}` : window.location.pathname)
-    }
   }, [authLoading, user])
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [billingData, paymentsData] = await Promise.all([
-        fetchBillingStatus(),
-        fetchPayments(),
-      ])
-      setBilling(billingData)
+      const paymentsData = await fetchPayments()
       setPayments(paymentsData)
     } catch {
-      toast.error("Failed to load billing data")
+      toast.error("Failed to load payments")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleUpgrade = async (tier: "starter" | "pro" | "enterprise") => {
-    setBillingLoading(true)
-    try {
-      const url = await createBillingCheckout(tier)
-      window.location.href = url
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to start checkout")
-      setBillingLoading(false)
-    }
-  }
-
-  const handleManageBilling = async () => {
-    setBillingLoading(true)
-    try {
-      const url = await createBillingPortal()
-      window.open(url, "_blank")
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to open billing portal")
-    } finally {
-      setBillingLoading(false)
     }
   }
 
@@ -158,9 +102,9 @@ export function BillingPanel() {
     <div className="flex flex-col gap-6 p-4 lg:p-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
           <p className="text-muted-foreground">
-            Manage your subscription and payment activity.
+            View and manage your payment history.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
@@ -168,59 +112,6 @@ export function BillingPanel() {
           Refresh
         </Button>
       </div>
-
-      <Separator />
-
-      <section className="space-y-4">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <CardTitle className="text-lg">Subscription Plan</CardTitle>
-                <CardDescription>Manage your SayOps platform subscription.</CardDescription>
-              </div>
-              {billing && (
-                <Badge variant={billing.tier === "free" ? "outline" : "default"} className="capitalize text-sm px-3 py-1">
-                  {TIER_LABELS[billing.tier] ?? billing.tier}
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!billing || billing.tier === "free" ? (
-              <p className="text-sm text-muted-foreground">
-                You are on the <strong>Free</strong> plan. Upgrade to unlock more limits and features.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                You are on the <strong>{TIER_LABELS[billing.tier]}</strong> plan.
-                Use billing portal for invoices and payment details.
-              </p>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-wrap gap-2">
-            {(!billing || billing.tier === "free") && (
-              <>
-                <Button onClick={() => handleUpgrade("starter")} disabled={billingLoading}>
-                  Upgrade to Starter
-                </Button>
-                <Button onClick={() => handleUpgrade("pro")} disabled={billingLoading}>
-                  Upgrade to Pro
-                </Button>
-                <Button variant="outline" onClick={() => handleUpgrade("enterprise")} disabled={billingLoading}>
-                  Upgrade to Enterprise
-                </Button>
-              </>
-            )}
-            {billing?.hasStripeCustomer && (
-              <Button variant="outline" onClick={handleManageBilling} disabled={billingLoading}>
-                <IconExternalLink className="mr-2 size-4" />
-                {billingLoading ? "Opening..." : "Manage Billing"}
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      </section>
 
       <Separator />
 
@@ -233,7 +124,7 @@ export function BillingPanel() {
           <CardContent className="flex flex-col items-center justify-center py-12 gap-4 text-center">
             <IconCreditCard className="size-12 text-muted-foreground" />
             <div>
-              <p className="font-semibold text-lg">No billing payments yet</p>
+              <p className="font-semibold text-lg">No payments yet</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Stripe charge history will appear here once billing activity starts.
               </p>
@@ -319,4 +210,3 @@ export function BillingPanel() {
     </div>
   )
 }
-
