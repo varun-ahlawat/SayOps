@@ -9,10 +9,11 @@ import { DashboardPanel } from "./DashboardPanel"
 import { DocumentsPanel } from "./DocumentsPanel"
 import { HistoryPanel } from "./HistoryPanel"
 import { IntegrationsPanel } from "./IntegrationsPanel"
-import { SettingsPanel } from "./SettingsPanel"
+import { AccountPanel } from "./AccountPanel"
+import { NotificationsPanel } from "./NotificationsPanel"
 import { AgentDetailPanel } from "./AgentDetailPanel"
 import { CreateAgentPanel } from "./CreateAgentPanel"
-import { PaymentsPanel } from "./PaymentsPanel"
+import { BillingPanel } from "./PaymentsPanel"
 
 function PanelContainerInner() {
   const { view, agentId } = useViewParams()
@@ -27,7 +28,8 @@ function PanelContainerInner() {
 
   // Track visited panels for lazy mounting
   useEffect(() => {
-    const key = view === "agent" ? "agent" : view
+    const normalizedView = view === "settings" ? "account" : view === "payments" ? "billing" : view
+    const key = normalizedView === "agent" ? "agent" : normalizedView
     setVisited((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
   }, [view])
 
@@ -53,8 +55,11 @@ function PanelContainerInner() {
       <Panel active={view === "integrations"} visited={visited.has("integrations")}>
         <IntegrationsPanel />
       </Panel>
-      <Panel active={view === "settings"} visited={visited.has("settings")}>
-        <SettingsPanel />
+      <Panel active={view === "account" || view === "settings"} visited={visited.has("account")}>
+        <AccountPanel />
+      </Panel>
+      <Panel active={view === "notifications"} visited={visited.has("notifications")}>
+        <NotificationsPanel />
       </Panel>
       <Panel active={view === "agent"} visited={visited.has("agent")}>
         {/* key={agentId} forces remount on agent switch — resets form state, tabs, etc. */}
@@ -63,8 +68,8 @@ function PanelContainerInner() {
       <Panel active={view === "create-agent"} visited={visited.has("create-agent")}>
         <CreateAgentPanel />
       </Panel>
-      <Panel active={view === "payments"} visited={visited.has("payments")}>
-        <PaymentsPanel />
+      <Panel active={view === "billing" || view === "payments"} visited={visited.has("billing")}>
+        <BillingPanel />
       </Panel>
     </>
   )
