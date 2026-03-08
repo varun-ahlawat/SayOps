@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function NavUser({
   user,
@@ -75,7 +76,14 @@ export function NavUser({
                   {user.email}
                 </span>
               </div>
-              <IconDotsVertical className="ml-auto size-4" />
+              <span
+                className="ml-auto flex items-center gap-1"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <ThemeToggle />
+              </span>
+              <IconDotsVertical className="size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

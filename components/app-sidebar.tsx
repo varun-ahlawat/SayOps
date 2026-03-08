@@ -3,7 +3,6 @@
 import * as React from "react"
 import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard } from "@tabler/icons-react"
 import { NavUser } from "@/components/nav-user"
-import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
@@ -90,7 +89,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
       {/* Desktop collapsed strip — hidden on mobile */}
       {isCollapsed && (
-        <div className="sticky top-0 h-screen flex-shrink-0 border-r bg-sidebar z-30 hidden lg:block">
+        <div className="sticky top-0 h-screen flex-shrink-0 border-r bg-gradient-to-b from-blue-200 via-slate-100 to-purple-200 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 z-30 hidden lg:block">
           <button
             onClick={toggleCollapsed}
             className="flex items-center justify-center w-10 h-10 mt-2 mx-auto text-muted-foreground hover:text-foreground"
@@ -105,14 +104,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       {!isCollapsed && (
         <div
           className={cn(
-            "h-screen flex-shrink-0",
+            "h-screen flex-shrink-0 bg-gradient-to-b from-blue-200 via-slate-100 to-purple-200 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900",
             mobileOpen
               ? "fixed inset-y-0 left-0 z-50 flex"
               : "relative sticky top-0 z-30 hidden lg:flex"
           )}
           style={{ width: mobileOpen ? DEFAULT_WIDTH : width }}
         >
-          <Sidebar collapsible="none" className="h-full !w-full" {...props}>
+          <Sidebar collapsible="none" className="h-full !w-full !bg-white/25 dark:!bg-black/30 backdrop-blur-2xl border-r border-white/40 dark:border-white/10 shadow-[inset_-1px_0_0_rgba(255,255,255,0.5)] dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.08)]" {...props}>
             <SidebarHeader>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -168,9 +167,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             </SidebarContent>
 
             <SidebarFooter className="gap-2 p-4">
-              <div className="flex items-center justify-between px-2">
-                <ThemeToggle />
-              </div>
               <NavUser user={userData} />
             </SidebarFooter>
           </Sidebar>
