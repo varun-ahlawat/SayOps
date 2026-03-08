@@ -89,7 +89,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
       {/* Desktop collapsed strip — hidden on mobile */}
       {isCollapsed && (
-        <div className="sticky top-0 h-screen flex-shrink-0 border-r bg-gradient-to-b from-blue-300 via-slate-200 to-purple-300 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 z-30 hidden lg:block">
+        <div className="sticky top-0 h-screen flex-shrink-0 border-r bg-gradient-to-b from-blue-200 via-slate-100 to-purple-200 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 z-30 hidden lg:block">
           <button
             onClick={toggleCollapsed}
             className="flex items-center justify-center w-10 h-10 mt-2 mx-auto text-muted-foreground hover:text-foreground"
@@ -104,7 +104,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       {!isCollapsed && (
         <div
           className={cn(
-            "h-screen flex-shrink-0 bg-gradient-to-b from-blue-300 via-slate-200 to-purple-300 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900",
+            "h-screen flex-shrink-0 bg-gradient-to-b from-blue-200 via-slate-100 to-purple-200 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900",
             mobileOpen
               ? "fixed inset-y-0 left-0 z-50 flex"
               : "relative sticky top-0 z-30 hidden lg:flex"
