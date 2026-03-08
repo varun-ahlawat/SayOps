@@ -3,7 +3,6 @@
 import * as React from "react"
 import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard } from "@tabler/icons-react"
 import { NavUser } from "@/components/nav-user"
-import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
