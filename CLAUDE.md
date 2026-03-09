@@ -167,6 +167,13 @@ Eva is the platform's AI assistant (backed by the `super` agent on the backend).
 3. Backend returns `{ toolCalls, output }` (plus a `broadcast` compatibility alias)
 4. If `navigate_to_page` tool called → stored in `pendingNavigation` → panel switches via `setView()`
 
+### Dev Raw LLM Inspector
+- Standalone route: `/debug/agent-traces`
+- Purpose: inspect raw provider-level `llm_traces.request_payload` and `response_payload` for the most recent web-agent session
+- Behavior: on localhost only, current web-agent entrypoints open or reuse one named browser tab (`speakops-agent-debug`) and publish the returned `sessionID` to it
+- Transport: the inspector tab fetches traces from `zl-backend` via `GET /api/debug/llm-traces/session/:sessionId`
+- Layout contract: left rail lists the LLM calls within the current session; right pane shows raw input on top and raw output on bottom
+
 ### Agent Detail Page (`/agents/[agentId]`)
 Two tabs:
 1. **Settings** — `AgentSettingsForm`: name, description, system prompt, advanced settings (knowledge base toggle, platform checkboxes, connector checkboxes)
@@ -187,7 +194,12 @@ Agents can be assigned connectors (Google Calendar, Gmail, HubSpot) via checkbox
 
 ## Key Conventions
 
+- Keep AI/product behavior simple. Do not add frontend-side compensating logic for overengineered backend agent flows.
+- Prefer one clear path over multiple modes. If behavior depends on caller/user state, that should normally come from backend state and prompt context, not bespoke UI logic.
+- Respect DRY strictly. Do not duplicate agent/business rules across widgets, stores, and panels.
+- Assistant text is plain text. Never depend on literal `broadcast` tokens or `[BROADCAST]` wrappers in the UI.
 - **SPA with URL params:** Navigate via `setView()` / `useViewParams()`, not Next.js router. All authenticated views render inside `/dashboard`.
+- **Debug inspector is standalone:** `/debug/agent-traces` is intentionally not routed through the `/dashboard` SPA shell.
 - **BFF Pattern:** No `app/api/` routes. All data via `lib/api-client.ts` to `zl-backend`.
 - **Eva, not Super Agent:** The user-facing name is "Eva". Backend agent ID is still `'super'`.
 - **Zustand for state:** Use stores in `stores/` for shared state. Prefer store over prop drilling or React context.
@@ -196,10 +208,14 @@ Agents can be assigned connectors (Google Calendar, Gmail, HubSpot) via checkbox
 - **shadcn/ui:** All UI primitives live in `components/ui/`. Use existing components before creating new ones.
 - **Icons:** Use `@tabler/icons-react` consistently.
 - **Audio:** Call recordings are mulaw 8kHz from GCS, streamed via signed URLs.
-- **Assistant payloads:** Backend returns `broadcast` as a compatibility alias of `output`; use plain assistant text.
+- **Assistant payloads:** Backend may return `broadcast` as a compatibility alias of `output`, but render/use the plain assistant text content only.
 
 ## Environment Variables
 - `NEXT_PUBLIC_BACKEND_URL` or `AGENT_BACKEND_URL`: URL of `zl-backend` (default `http://localhost:3001`)
 - `NEXT_PUBLIC_FIREBASE_*`: Standard Firebase config keys (API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID)
 - `NEXT_PUBLIC_USE_REAL_AUTH`: Set to `'true'` to disable dev auth bypass
 - `NEXT_PUBLIC_APP_URL`: Frontend URL (for OAuth redirects)
+- Docker caveat: the built `docker-compose.test.yml` frontend image bakes `NEXT_PUBLIC_*` values at build time, so dev-only inspector activation must not depend on a new `NEXT_PUBLIC_*` toggle
+- Raw trace inspector backend runtime flags:
+  - `LLM_TRACE_MODE=all`
+  - `LLM_TRACE_DEBUG_API=true`

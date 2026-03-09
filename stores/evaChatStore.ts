@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { chatWithAgent, fetchMessages, createConversation } from '@/lib/api-client'
+import { ensureAgentTraceInspectorWindow } from '@/lib/agent-trace-debug'
 import { useConversationsStore } from './conversationsStore'
 import type { MessagePart } from '@/lib/types'
 
@@ -85,6 +86,8 @@ const useEvaChatStore = create<EvaChatState>()(
 
       sendMessage: async (content: string, files: File[]) => {
         if (!content.trim() && files.length === 0) return
+
+        ensureAgentTraceInspectorWindow()
 
         const trimmed = content.trim()
 

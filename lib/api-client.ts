@@ -1,4 +1,5 @@
 import { auth } from "@/lib/firebase"
+import { publishAgentTraceError, publishAgentTraceSession } from "@/lib/agent-trace-debug"
 import type {
   Agent,
   Conversation,
@@ -15,6 +16,7 @@ import type {
   BillingStatus,
   UserSettings,
   NotificationPreferences,
+  LlmTraceDebugSession,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -60,6 +62,14 @@ export async function fetchCurrentUser(): Promise<{ user: OrgMember; organizatio
 export async function fetchUser(): Promise<OrgMember> {
   const res = await apiFetch<{ user: OrgMember; organization?: Organization }>("/user/me")
   return res.user
+}
+
+export async function updateCurrentUserPhone(phoneNumber: string): Promise<OrgMember> {
+  const res = await apiFetch<{ member: OrgMember }>("/user/phone", {
+    method: "POST",
+    body: JSON.stringify({ phone_number: phoneNumber }),
+  })
+  return res.member
 }
 
 export async function fetchOrgInvites(): Promise<OrgInvite[]> {
@@ -131,16 +141,28 @@ export async function chatWithAgent(
   conversationId?: string,
   history?: { role: 'user' | 'assistant' | 'tool'; content?: string | MessagePart[] | null; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[]
 ): Promise<ChatResponse> {
-  return apiFetch<ChatResponse>("/agent", {
-    method: "POST",
-    body: JSON.stringify({
-      prompt,
-      agent: agentId,
-      customer_id: customerId,
-      conversation_id: conversationId,
-      history,
-    }),
-  })
+  try {
+    const response = await apiFetch<ChatResponse>("/agent", {
+      method: "POST",
+      body: JSON.stringify({
+        prompt,
+        agent: agentId,
+        customer_id: customerId,
+        conversation_id: conversationId,
+        history,
+      }),
+    })
+
+    publishAgentTraceSession(response.sessionID, agentId || "super")
+    return response
+  } catch (err) {
+    publishAgentTraceError(err instanceof Error ? err.message : "Agent request failed")
+    throw err
+  }
+}
+
+export async function fetchLlmTraceSession(sessionId: string): Promise<LlmTraceDebugSession> {
+  return apiFetch<LlmTraceDebugSession>(`/debug/llm-traces/session/${encodeURIComponent(sessionId)}`)
 }
 
 // ---- Documents / Upload ----

@@ -22,6 +22,7 @@ import {
 import { Message } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { ChatInput } from "@/components/chat/ChatInput"
+import { ensureAgentTraceInspectorWindow } from "@/lib/agent-trace-debug"
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
   query_db: <IconDatabase className="size-3" />,
@@ -74,6 +75,8 @@ export default function AssistantChatPage() {
   }, [messages, sending])
 
   const handleSend = useCallback(async (content: string, _files: File[]) => {
+    ensureAgentTraceInspectorWindow()
+
     setMessages((prev) => [...prev, { role: "user", content }])
     setSending(true)
 

@@ -251,3 +251,29 @@ export interface ChatResponse {
   steps: number
   toolCalls: { name: string; args: any; result?: any }[]
 }
+
+export interface LlmTraceDebugRecord {
+  id: string
+  provider: string
+  modelId: string
+  status: 'success' | 'empty_completion' | 'error' | 'retried_success' | 'retried_failure'
+  attempt: number
+  startedAt: string
+  completedAt: string
+  latencyMs: number
+  promptTokens: number | null
+  completionTokens: number | null
+  totalTokens: number | null
+  thoughtsTokenCount: number | null
+  parsedText: string | null
+  parsedToolCalls: unknown
+  requestPayload: unknown
+  responsePayload: unknown
+}
+
+export interface LlmTraceDebugSession {
+  sessionId: string
+  conversationId: string | null
+  executionId: string | null
+  traces: LlmTraceDebugRecord[]
+}

@@ -9,6 +9,7 @@ import { Conversation } from "@/lib/types"
 import { ChatInput } from "@/components/chat/ChatInput"
 import { IconRobot, IconUser, IconLoader2, IconRefresh, IconPlus, IconMessage, IconTrash } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import { ensureAgentTraceInspectorWindow } from "@/lib/agent-trace-debug"
 
 interface TestMessage {
   role: 'user' | 'assistant'
@@ -88,6 +89,8 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
   }, [messages])
 
   const handleSend = useCallback(async (content: string, _files: File[]) => {
+    ensureAgentTraceInspectorWindow()
+
     const userMsg: TestMessage = { role: 'user', content }
     setMessages(prev => [...prev, userMsg])
     setIsLoading(true)
