@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { SectionCards } from "@/components/section-cards"
 import { CallHistoryTable } from "@/components/call-history-table"
@@ -13,16 +13,19 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { IconRobot, IconPlus } from "@tabler/icons-react"
-import { fetchAgents, fetchCalls, fetchStats } from "@/lib/api-client"
+import { fetchAgents, fetchCalls, fetchStats, updateCurrentUserPhone } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { useViewParams } from "@/hooks/useViewParams"
 import type { Agent, DashboardStats } from "@/lib/types"
 
 export function DashboardPanel() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { setView } = useViewParams()
 
   const agentId = searchParams.get("agent") || ""
+  const callerPhone = searchParams.get("phoneNumber") || ""
+  const searchSnapshot = searchParams.toString()
 
   const [agents, setAgents] = useState<Agent[]>([])
   const [calls, setCalls] = useState<any[]>([])
@@ -58,6 +61,31 @@ export function DashboardPanel() {
 
     load()
   }, [agentId])
+
+  useEffect(() => {
+    if (!callerPhone) return
+
+    let cancelled = false
+    async function linkCallerPhone() {
+      try {
+        await updateCurrentUserPhone(callerPhone)
+      } catch (err) {
+        console.error("Failed to link caller phone after Google sign-in:", err)
+      } finally {
+        if (cancelled) return
+        const params = new URLSearchParams(searchSnapshot)
+        params.delete("phoneNumber")
+        params.delete("source")
+        const next = params.toString()
+        router.replace(next ? `/dashboard?${next}` : "/dashboard")
+      }
+    }
+
+    linkCallerPhone()
+    return () => {
+      cancelled = true
+    }
+  }, [callerPhone, router, searchSnapshot])
 
   if (loading) {
     return (
