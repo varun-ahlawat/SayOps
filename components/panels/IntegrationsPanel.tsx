@@ -40,7 +40,7 @@ const AVAILABLE_INTEGRATIONS = [
     description: 'Chat with customers on Facebook Messenger.',
     icon: 'facebook',
     connectProvider: 'facebook' as const,
-    comingSoon: false,
+    comingSoon: true,
   },
   {
     provider: 'whatsapp',
@@ -48,7 +48,7 @@ const AVAILABLE_INTEGRATIONS = [
     description: 'Chat with customers on WhatsApp.',
     icon: 'whatsapp',
     connectProvider: 'whatsapp' as const,
-    comingSoon: false,
+    comingSoon: true,
   },
   {
     provider: 'telegram',
@@ -56,7 +56,7 @@ const AVAILABLE_INTEGRATIONS = [
     description: 'Chat with customers on Telegram.',
     icon: 'telegram',
     connectProvider: 'telegram' as const,
-    comingSoon: false,
+    comingSoon: true,
   },
   {
     provider: 'stripe_connect',
