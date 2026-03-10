@@ -384,17 +384,31 @@ export async function updateConversationStatus(conversationId: string, status: '
 }
 
 export async function fetchCalls(agentId: string): Promise<any[]> {
-  // Map conversations to the old call history format for the UI
+  // Map conversations to call history rows for the UI.
   try {
     const convs = await fetchConversations(agentId)
-    return convs.map(c => ({
+    return convs
+      .map(c => ({
       id: c.id,
       agent_id: c.agent_id,
+      channel: c.channel,
       timestamp: c.started_at,
-      duration_seconds: 0,
+      duration_seconds: c.channel === 'voice' ? (Number(c.metadata?.vapi_duration_seconds ?? 0) || 0) : 0,
+      has_recording: Boolean(
+        (typeof c.metadata?.vapi_recording_url === 'string' && c.metadata.vapi_recording_url.trim().length > 0) ||
+        (typeof c.metadata?.recordingUrl === 'string' && c.metadata.recordingUrl.trim().length > 0)
+      ),
+      has_transcript: Boolean(
+        (Array.isArray(c.metadata?.vapi_transcript) && c.metadata.vapi_transcript.length > 0) ||
+        (typeof c.metadata?.vapi_transcript === 'string' && c.metadata.vapi_transcript.trim().length > 0)
+      ),
       summary: typeof c.metadata?.summary === 'string' ? c.metadata.summary : 
                (c.metadata?.summary && typeof c.metadata.summary === 'object' ? (c.metadata.summary as any).summary : "Conversation"),
-      caller_phone: c.customer_id || "Web User",
+      caller_phone:
+        (typeof c.metadata?.vapi_caller_phone === 'string' && c.metadata.vapi_caller_phone.trim()) ||
+        (typeof c.metadata?.vapi_customer_external_id === 'string' && c.metadata.vapi_customer_external_id.trim()) ||
+        c.customer_id ||
+        (c.channel === 'web' ? "Web User" : "Unknown Caller"),
     }))
   } catch {
     return []
@@ -662,6 +676,62 @@ export async function updateNotificationPreferences(payload: {
     body: JSON.stringify(payload),
   })
   return res.preferences
+}
+
+// ---- Usage / Token Analytics ----
+
+export interface UsageSummaryRow {
+  provider: string | null
+  metric: string | null
+  model_id: string | null
+  total_quantity: number | string
+  total_cost_usd: number | string
+  event_count: number | string
+}
+
+export interface UsageDailyRow extends UsageSummaryRow {
+  date: string
+}
+
+export interface UsageBreakdownRow {
+  provider?: string | null
+  agent_id?: string | null
+  channel?: string | null
+  total_quantity: number | string
+  total_cost_usd: number | string
+  event_count: number | string
+}
+
+export async function fetchUsageSummary(period: "month" | "day" = "month"): Promise<{
+  period: "month" | "day"
+  year_month?: string
+  date?: string
+  rows: UsageSummaryRow[]
+}> {
+  return apiFetch(`/usage/summary?period=${period}`)
+}
+
+export async function fetchUsageDaily(from?: string, to?: string): Promise<{
+  from: string
+  to: string
+  rows: UsageDailyRow[]
+}> {
+  const params = new URLSearchParams()
+  if (from) params.set("from", from)
+  if (to) params.set("to", to)
+  const query = params.toString()
+  return apiFetch(query ? `/usage/daily?${query}` : "/usage/daily")
+}
+
+export async function fetchUsageBreakdown(
+  groupBy: "provider" | "agent" | "channel" = "provider",
+  period: "month" | "day" = "month"
+): Promise<{
+  period: "month" | "day"
+  groupBy: "provider" | "agent" | "channel"
+  rows: UsageBreakdownRow[]
+}> {
+  return apiFetch(`/usage/breakdown?groupBy=${groupBy}&period=${period}`)
 }
 
 // ---- Stats (To be implemented in backend if missing) ----

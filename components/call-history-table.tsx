@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import {
@@ -7,6 +7,7 @@ import {
   IconPhone,
   IconUser,
   IconRobot,
+  IconCalendar,
 } from "@tabler/icons-react"
 import { format } from "date-fns"
 
@@ -36,6 +37,10 @@ type CallHistoryEntryWithTurns = {
   id: string
   timestamp: string
   caller_phone: string
+  duration_seconds?: number
+  channel?: string
+  has_recording?: boolean
+  has_transcript?: boolean
   summary: string | { summary?: string } | null
 }
 
@@ -46,6 +51,22 @@ function messageToText(content: Message["content"]): string {
     .filter((part) => part.type === "text")
     .map((part) => part.text ?? "")
     .join("\n")
+}
+
+function formatDuration(seconds?: number): string {
+  const total = Number(seconds ?? 0)
+  if (!Number.isFinite(total) || total <= 0) return "-"
+  const mins = Math.floor(total / 60)
+  const secs = Math.floor(total % 60)
+  if (mins <= 0) return `${secs}s`
+  if (secs === 0) return `${mins}m`
+  return `${mins}m ${secs}s`
+}
+
+function dayKey(date: Date): string {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().slice(0, 10)
 }
 
 function CallRow({ call }: { call: any }) {
@@ -61,7 +82,7 @@ function CallRow({ call }: { call: any }) {
       try {
         const [msgs, url] = await Promise.all([
           fetchMessages(call.id),
-          fetchRecordingUrl(call.id).catch(() => null)
+          call.channel === "voice" ? fetchRecordingUrl(call.id).catch(() => null) : Promise.resolve(null),
         ])
         setMessages(msgs)
         setRecordingUrl(url)
@@ -76,17 +97,10 @@ function CallRow({ call }: { call: any }) {
 
   return (
     <>
-      <TableRow
-        className="cursor-pointer hover:bg-muted/50"
-        onClick={toggleOpen}
-      >
+      <TableRow className="cursor-pointer hover:bg-muted/50" onClick={toggleOpen}>
         <TableCell>
           <Button variant="ghost" size="icon" className="size-6">
-            {isOpen ? (
-              <IconChevronDown className="size-4" />
-            ) : (
-              <IconChevronRight className="size-4" />
-            )}
+            {isOpen ? <IconChevronDown className="size-4" /> : <IconChevronRight className="size-4" />}
           </Button>
         </TableCell>
         <TableCell className="font-medium">
@@ -95,28 +109,29 @@ function CallRow({ call }: { call: any }) {
             {format(timestamp, "MMM d, yyyy")}
           </div>
         </TableCell>
-        <TableCell className="text-muted-foreground">
-          {format(timestamp, "h:mm a")}
-        </TableCell>
+        <TableCell className="text-muted-foreground">{format(timestamp, "h:mm a")}</TableCell>
         <TableCell>
-          <Badge variant="outline">{call.caller_phone}</Badge>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{formatDuration(call.duration_seconds)}</span>
+            <Badge variant="outline" className="w-fit">{call.caller_phone}</Badge>
+          </div>
         </TableCell>
         <TableCell className="max-w-[300px] truncate text-muted-foreground">
-          {typeof call.summary === 'object' && call.summary !== null
+          {typeof call.summary === "object" && call.summary !== null
             ? (call.summary.summary || JSON.stringify(call.summary))
             : call.summary}
         </TableCell>
       </TableRow>
+
       {isOpen && (
         <TableRow className="bg-muted/30 hover:bg-muted/30">
           <TableCell colSpan={5} className="p-0">
             <div className="px-6 py-6 space-y-6">
-              {/* Summary Section */}
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Analysis</h4>
                 <div className="bg-background rounded-xl p-4 border shadow-sm">
                   <p className="text-sm leading-relaxed">
-                    {typeof call.summary === 'object' && call.summary !== null
+                    {typeof call.summary === "object" && call.summary !== null
                       ? (call.summary.summary || JSON.stringify(call.summary))
                       : call.summary}
                   </p>
@@ -129,7 +144,6 @@ function CallRow({ call }: { call: any }) {
                 </div>
               </div>
 
-              {/* Conversation Section */}
               <div className="flex flex-col gap-4">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Transcript</h4>
                 <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2">
@@ -141,28 +155,18 @@ function CallRow({ call }: { call: any }) {
                     messages.map((turn, index) => (
                       <div
                         key={index}
-                        className={`flex gap-3 ${
-                          turn.role === "assistant" ? "flex-row" : "flex-row-reverse"
-                        }`}
+                        className={`flex gap-3 ${turn.role === "assistant" ? "flex-row" : "flex-row-reverse"}`}
                       >
                         <div
                           className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-                            turn.role === "user"
-                              ? "bg-muted"
-                              : "bg-primary text-primary-foreground"
+                            turn.role === "user" ? "bg-muted" : "bg-primary text-primary-foreground"
                           }`}
                         >
-                          {turn.role === "user" ? (
-                            <IconUser className="size-4" />
-                          ) : (
-                            <IconRobot className="size-4" />
-                          )}
+                          {turn.role === "user" ? <IconUser className="size-4" /> : <IconRobot className="size-4" />}
                         </div>
                         <div
                           className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                            turn.role === "user"
-                              ? "bg-muted"
-                              : "bg-primary/10"
+                            turn.role === "user" ? "bg-muted" : "bg-primary/10"
                           }`}
                         >
                           {messageToText(turn.content)}
@@ -172,9 +176,9 @@ function CallRow({ call }: { call: any }) {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => window.location.href=`/assistant?ref=${call.id}`}>
+                <Button variant="outline" size="sm" onClick={() => (window.location.href = `/assistant?ref=${call.id}`)}>
                   Consult Business Assistant about this call
                 </Button>
               </div>
@@ -187,39 +191,111 @@ function CallRow({ call }: { call: any }) {
 }
 
 export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[] }) {
+  const [viewFilter, setViewFilter] = React.useState<"all" | "voice" | "web">("all")
+  const [daysBack, setDaysBack] = React.useState(0)
+
+  const selectedDate = React.useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - daysBack)
+    return d
+  }, [daysBack])
+
+  const dateFilteredCalls = React.useMemo(() => {
+    const key = dayKey(selectedDate)
+    return calls.filter((c) => dayKey(new Date(c.timestamp)) === key)
+  }, [calls, selectedDate])
+
+  const filteredCalls = React.useMemo(() => {
+    if (viewFilter === "all") return dateFilteredCalls
+    if (viewFilter === "voice") return dateFilteredCalls.filter((c) => c.channel === "voice")
+    return dateFilteredCalls.filter((c) => c.channel === "web")
+  }, [dateFilteredCalls, viewFilter])
+
+  const counts = React.useMemo(() => {
+    const voice = dateFilteredCalls.filter((c) => c.channel === "voice").length
+    const web = dateFilteredCalls.filter((c) => c.channel === "web").length
+    const recordings = dateFilteredCalls.filter((c) => c.channel === "voice" && c.has_recording).length
+    const transcripts = dateFilteredCalls.filter((c) => c.has_transcript).length
+    return { all: dateFilteredCalls.length, voice, web, recordings, transcripts }
+  }, [dateFilteredCalls])
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Call History</CardTitle>
-        <CardDescription>
-          Recent calls handled by your agents
-        </CardDescription>
+        <CardDescription>Recent calls and web chats handled by your agents</CardDescription>
+
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <IconCalendar className="size-4" />
+            <span>{format(selectedDate, "MMM d, yyyy")}</span>
+          </div>
+          <Button variant={daysBack === 0 ? "default" : "outline"} size="sm" onClick={() => setDaysBack(0)}>
+            Today
+          </Button>
+          <Button variant={daysBack === 1 ? "default" : "outline"} size="sm" onClick={() => setDaysBack(1)}>
+            Yesterday
+          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Days back</span>
+            <input
+              type="number"
+              min={0}
+              value={daysBack}
+              onChange={(e) => {
+                const n = Number.parseInt(e.target.value || "0", 10)
+                setDaysBack(Number.isFinite(n) && n >= 0 ? n : 0)
+              }}
+              className="h-8 w-20 rounded-md border bg-background px-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          <Badge variant="secondary">Daily Total: {counts.all}</Badge>
+          <Badge variant="secondary">Calls: {counts.voice}</Badge>
+          <Badge variant="secondary">Web Chats: {counts.web}</Badge>
+          <Badge variant="secondary">Recordings: {counts.recordings}</Badge>
+          <Badge variant="secondary">Transcripts: {counts.transcripts}</Badge>
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          <Button variant={viewFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("all")}>
+            All ({counts.all})
+          </Button>
+          <Button variant={viewFilter === "voice" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("voice")}>
+            Calls ({counts.voice})
+          </Button>
+          <Button variant={viewFilter === "web" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("web")}>
+            Web Chats ({counts.web})
+          </Button>
+        </div>
       </CardHeader>
+
       <CardContent>
-        {calls.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">
-            No call history yet. Calls will appear here once your agents start handling them.
-          </p>
+        {filteredCalls.length === 0 ? (
+          <p className="py-8 text-center text-muted-foreground">No history for this filter yet.</p>
         ) : (
           <div className="overflow-x-auto">
-          <ScrollArea className="w-full">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10" />
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Summary</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {calls.map((call) => (
-                  <CallRow key={call.id} call={call} />
-                ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+            <ScrollArea className="w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10" />
+                    <TableHead>Date</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Summary</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCalls.map((call) => (
+                    <CallRow key={call.id} call={call} />
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </div>
         )}
       </CardContent>

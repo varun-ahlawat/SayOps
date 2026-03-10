@@ -15,6 +15,7 @@ import { AgentDetailPanel } from "./AgentDetailPanel"
 import { CreateAgentPanel } from "./CreateAgentPanel"
 import { BillingPanel } from "./PaymentsPanel"
 import { SubscriptionPanel } from "./SubscriptionPanel"
+import { TokenUsagePanel } from "./TokenUsagePanel"
 
 function PanelContainerInner() {
   const { view, agentId } = useViewParams()
@@ -74,6 +75,9 @@ function PanelContainerInner() {
       </Panel>
       <Panel active={view === "payments"} visited={visited.has("payments")}>
         <BillingPanel />
+      </Panel>
+      <Panel active={view === "token-usage"} visited={visited.has("token-usage")}>
+        <TokenUsagePanel />
       </Panel>
     </>
   )

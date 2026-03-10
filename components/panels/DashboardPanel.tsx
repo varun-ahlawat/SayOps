@@ -47,10 +47,17 @@ export function DashboardPanel() {
         setAgents(agentsData)
         setStats(statsData)
 
-        const targetAgentId = agentId || agentsData[0]?.id
-        if (targetAgentId) {
-          const callsData = await fetchCalls(targetAgentId)
-          setCalls(callsData)
+        if (agentsData.length > 0) {
+          const allCallsByAgent = await Promise.all(
+            agentsData.map((a) => fetchCalls(a.id))
+          )
+          const flattened = allCallsByAgent
+            .flat()
+            .sort((a, b) =>
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            )
+
+          setCalls(agentId ? flattened.filter((c) => c.agent_id === agentId) : flattened)
         }
       } catch (err) {
         console.error("Failed to load dashboard data:", err)
