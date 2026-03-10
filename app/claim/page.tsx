@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { Suspense, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
@@ -34,7 +34,43 @@ function formatExpiry(value?: string | null): string | null {
   return date.toLocaleString()
 }
 
-export default function ClaimPage() {
+function ClaimPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-xl">
+        <div className="mb-8 flex flex-col items-center">
+          <Link href="/" className="mb-6 flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
+            <IconArrowLeft className="size-4" />
+            <span className="text-sm">Back to home</span>
+          </Link>
+          <span className="text-xl font-bold">SpeakOps</span>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function ClaimPageFallback() {
+  return (
+    <ClaimPageShell>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Claim your workspace</CardTitle>
+          <CardDescription>Loading your claim link...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center gap-3 rounded-md border px-4 py-8 text-sm text-muted-foreground">
+            <IconLoader2 className="size-4 animate-spin" />
+            <span>Preparing your claim page...</span>
+          </div>
+        </CardContent>
+      </Card>
+    </ClaimPageShell>
+  )
+}
+
+function ClaimPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")?.trim() ?? ""
@@ -127,16 +163,7 @@ export default function ClaimPage() {
   const wrongSignedInUser = !!preview && preview.status === "pending" && !!signedInEmail && !!expectedEmail && signedInEmail !== expectedEmail
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-xl">
-        <div className="mb-8 flex flex-col items-center">
-          <Link href="/" className="mb-6 flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
-            <IconArrowLeft className="size-4" />
-            <span className="text-sm">Back to home</span>
-          </Link>
-          <span className="text-xl font-bold">SpeakOps</span>
-        </div>
-
+    <ClaimPageShell>
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Claim your workspace</CardTitle>
@@ -243,7 +270,14 @@ export default function ClaimPage() {
             ) : null}
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </ClaimPageShell>
+  )
+}
+
+export default function ClaimPage() {
+  return (
+    <Suspense fallback={<ClaimPageFallback />}>
+      <ClaimPageContent />
+    </Suspense>
   )
 }
