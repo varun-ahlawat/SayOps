@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration, connectWhatsApp, connectTelegram, getStripeConnectUrl, disconnectStripe, fetchStripeConnectStatus } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconBrandGoogle, IconBrandGoogleHome, IconPlug, IconBrandMessenger, IconBrandWhatsapp, IconBrandTelegram, IconCreditCard } from "@tabler/icons-react"
+import { IconBrandGoogle, IconPlug, IconBrandMessenger, IconBrandWhatsapp, IconBrandTelegram, IconCreditCard } from "@tabler/icons-react"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/use-toast"
 
@@ -208,7 +208,15 @@ export function IntegrationsPanel() {
   const getIcon = (icon: string) => {
     switch (icon) {
       case "google": return <IconBrandGoogle className="size-8" />
-      case "gmail": return <IconBrandGoogleHome className="size-8" />
+      case "gmail": return (
+        <svg className="size-8" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
+          <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z"/>
+          <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.45 35,23.7 36,17"/>
+          <path fill="#c62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z"/>
+          <path fill="#fbc02d" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0C43.076,8,45,9.924,45,12.298z"/>
+        </svg>
+      )
       case "hubspot": return <IconPlug className="size-8 text-orange-500" />
       case "facebook": return <IconBrandMessenger className="size-8 text-blue-500" />
       case "whatsapp": return <IconBrandWhatsapp className="size-8 text-green-500" />
