@@ -6,7 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { useAuth } from "@/lib/auth-context"
-import { fetchMessages, chatWithAgent, createConversation } from "@/lib/api-client"
+import { fetchMessages, chatWithAgent } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -81,9 +81,7 @@ export default function AssistantChatPage() {
     setSending(true)
 
     try {
-      // Ensure we have a concrete Eva conversation backing this assistant thread
-      const conversation = await createConversation("super", "reuse")
-      const res = await chatWithAgent(content, "super", undefined, conversation.id)
+      const res = await chatWithAgent(content, "super", undefined, id)
       setMessages((prev) => [
         ...prev,
         {
@@ -100,7 +98,7 @@ export default function AssistantChatPage() {
     } finally {
       setSending(false)
     }
-  }, [])
+  }, [id])
 
   if (authLoading || loading) return <div className="flex h-screen items-center justify-center">Loading...</div>
 

@@ -17,6 +17,8 @@ import type {
   UserSettings,
   NotificationPreferences,
   LlmTraceDebugSession,
+  OwnerClaimPreview,
+  OwnerClaimCompletion,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -70,6 +72,18 @@ export async function updateCurrentUserPhone(phoneNumber: string): Promise<OrgMe
     body: JSON.stringify({ phone_number: phoneNumber }),
   })
   return res.member
+}
+
+export async function fetchOwnerClaimPreview(token: string): Promise<OwnerClaimPreview> {
+  const res = await apiFetch<{ claim: OwnerClaimPreview }>(`/api/onboarding/owner-claim/${encodeURIComponent(token)}`)
+  return res.claim
+}
+
+export async function completeOwnerClaim(token: string): Promise<OwnerClaimCompletion> {
+  return apiFetch<OwnerClaimCompletion>("/api/onboarding/owner-claim/complete", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  })
 }
 
 export async function fetchOrgInvites(): Promise<OrgInvite[]> {

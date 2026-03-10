@@ -277,3 +277,32 @@ export interface LlmTraceDebugSession {
   executionId: string | null
   traces: LlmTraceDebugRecord[]
 }
+
+export type OnboardingStage =
+  | 'stage_1_unclaimed_owner'
+  | 'stage_2_claimed_no_integrator'
+  | 'stage_3_claimed_integrated'
+
+export interface OwnerClaimPreview {
+  status: 'pending' | 'claimed' | 'expired'
+  organizationId: string
+  organizationName: string | null
+  expectedEmail: string | null
+  maskedEmail: string | null
+  expiresAt: string | null
+}
+
+export interface OwnerClaimCompletion {
+  claim: {
+    id: string
+    organization_id: string
+    status: 'pending_email' | 'link_sent' | 'claimed' | 'expired'
+    expected_email: string | null
+    phone_number: string | null
+    claimed_at: string | null
+    claimed_by_user_id: string | null
+  }
+  organizationId: string
+  stage: OnboardingStage
+  activatedAgentIds: string[]
+}

@@ -22,6 +22,28 @@ import { useSidebarStore, useAgentsStore, DEFAULT_WIDTH } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
 import { cn } from "@/lib/utils"
 
+function SpeakOpsWaveMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 44 12"
+      className="mt-1 h-3 w-11 text-current opacity-50"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <line x1="3" y1="6" x2="3" y2="6" />
+        <line x1="9" y1="3.5" x2="9" y2="8.5" />
+        <line x1="15" y1="1.5" x2="15" y2="10.5" />
+        <line x1="21" y1="4" x2="21" y2="8" />
+        <line x1="27" y1="2.5" x2="27" y2="9.5" />
+        <line x1="33" y1="1" x2="33" y2="11" />
+        <line x1="39" y1="4.5" x2="39" y2="7.5" />
+      </g>
+    </svg>
+  )
+}
+
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
@@ -120,12 +142,10 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       onClick={() => setView("dashboard")}
                       className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
                     >
-                      <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                        S
-                      </div>
-                      <div className="flex flex-col gap-0.5 leading-none">
-                        <span className="text-base font-bold text-foreground">SpeakOps</span>
-                      </div>
+                      <span className="flex flex-col items-start leading-none text-foreground">
+                        <span className="text-base font-bold">SpeakOps</span>
+                        <SpeakOpsWaveMark />
+                      </span>
                     </SidebarMenuButton>
                     {/* Collapse button: desktop only */}
                     <button
