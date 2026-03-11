@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
+import { fetchUsageSummary } from "@/lib/api-client"
 import { NavAgents } from "@/components/sidebar/NavAgents"
 import { NavChatHistory } from "@/components/sidebar/NavChatHistory"
 import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
@@ -50,12 +51,24 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
+  const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
 
   React.useEffect(() => {
     if (user) {
       fetchAgents()
     }
   }, [user, fetchAgents])
+
+  React.useEffect(() => {
+    if (!user) return
+    fetchUsageSummary("month")
+      .then(({ rows }) => {
+        const totalCost = rows.reduce((sum, r) => sum + r.total_cost_usd, 0)
+        const totalTokens = rows.reduce((sum, r) => sum + r.total_quantity, 0)
+        setUsageStats({ totalCost, totalTokens })
+      })
+      .catch(() => {})
+  }, [user])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -179,6 +192,12 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton onClick={() => setView("token-usage")} className="gap-2">
                       <IconCoin className="size-4 text-amber-500" />
                       <span>Token Usage</span>
+                      {usageStats && (
+                        <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
+                          <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
+                          <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
+                        </div>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>

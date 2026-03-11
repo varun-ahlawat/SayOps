@@ -101,9 +101,6 @@ export function UniversalChat({
     <>
       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-blue-200 via-slate-100 to-purple-200 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 text-foreground dark:text-white shrink-0">
         <div className="flex items-center gap-2 pl-2">
-          <div className="size-8 rounded-lg bg-black/10 dark:bg-white/20 flex items-center justify-center">
-            <IconMessageChatbot className="size-5" />
-          </div>
           <div>
             <h2 className="text-sm font-bold">{title}</h2>
             <p className="text-[10px] opacity-80">{subtitle}</p>
