@@ -28,8 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Dev bypass: Use a mock user in development (unless real auth is requested)
-    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_REAL_AUTH !== 'true') {
+    // Dev auth bypass must be explicitly enabled; public routes should stay public by default.
+    if (process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH_BYPASS === 'true') {
       setUser({
         uid: 'dev-user',
         email: 'dev@evently.local',
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     if (user) {
-      if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_REAL_AUTH !== 'true') return
+      if (process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH_BYPASS === 'true') return
       await user.getIdToken(true)
       await user.reload()
       // Create shallow copy to trigger re-render if needed, though user object is mutable

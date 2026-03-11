@@ -35,3 +35,5 @@ GOVERNANCE_SAYOPS.md
 *.tsbuildinfo
 next-env.d.ts
 Dockerfile.dev
+test-results/
+playwright-report/
