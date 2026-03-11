@@ -61,13 +61,26 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
   React.useEffect(() => {
     if (!user) return
-    fetchUsageSummary("month")
-      .then(({ rows }) => {
-        const totalCost = rows.reduce((sum, r) => sum + Number(r.total_cost_usd), 0)
-        const totalTokens = rows.reduce((sum, r) => sum + Number(r.total_quantity), 0)
-        setUsageStats({ totalCost, totalTokens })
-      })
-      .catch(() => {})
+
+    const refresh = () => {
+      fetchUsageSummary("month")
+        .then(({ rows }) => {
+          const totalCost = rows.reduce((sum, r) => sum + Number(r.total_cost_usd), 0)
+          const totalTokens = rows.reduce((sum, r) => sum + Number(r.total_quantity), 0)
+          setUsageStats({ totalCost, totalTokens })
+        })
+        .catch(() => {})
+    }
+
+    refresh()
+    const interval = setInterval(refresh, 60_000)
+    const onVisible = () => { if (document.visibilityState === "visible") refresh() }
+    document.addEventListener("visibilitychange", onVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [user])
 
   const handleMouseDown = (e: React.MouseEvent) => {

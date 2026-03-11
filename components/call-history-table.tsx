@@ -7,7 +7,6 @@ import {
   IconPhone,
   IconUser,
   IconRobot,
-  IconCalendar,
 } from "@tabler/icons-react"
 import { format } from "date-fns"
 
@@ -32,6 +31,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { fetchMessages, fetchRecordingUrl } from "@/lib/api-client"
 import { Message } from "@/lib/types"
+
+type DatePreset = "today" | "yesterday" | "last7" | "last30"
 
 type CallHistoryEntryWithTurns = {
   id: string
@@ -110,11 +111,11 @@ function CallRow({ call }: { call: any }) {
           </div>
         </TableCell>
         <TableCell className="text-muted-foreground">{format(timestamp, "h:mm a")}</TableCell>
+        <TableCell className="text-sm font-medium">
+          {formatDuration(call.duration_seconds)}
+        </TableCell>
         <TableCell>
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{formatDuration(call.duration_seconds)}</span>
-            <Badge variant="outline" className="w-fit">{call.caller_phone}</Badge>
-          </div>
+          <Badge variant="outline" className="w-fit">{call.caller_phone || "Web User"}</Badge>
         </TableCell>
         <TableCell className="max-w-[300px] truncate text-muted-foreground">
           {typeof call.summary === "object" && call.summary !== null
@@ -125,7 +126,7 @@ function CallRow({ call }: { call: any }) {
 
       {isOpen && (
         <TableRow className="bg-muted/30 hover:bg-muted/30">
-          <TableCell colSpan={5} className="p-0">
+          <TableCell colSpan={6} className="p-0">
             <div className="px-6 py-6 space-y-6">
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Analysis</h4>
@@ -192,19 +193,23 @@ function CallRow({ call }: { call: any }) {
 
 export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[] }) {
   const [viewFilter, setViewFilter] = React.useState<"all" | "voice" | "web">("all")
-  const [daysBack, setDaysBack] = React.useState(0)
-
-  const selectedDate = React.useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() - daysBack)
-    return d
-  }, [daysBack])
+  const [datePreset, setDatePreset] = React.useState<DatePreset>("today")
 
   const dateFilteredCalls = React.useMemo(() => {
-    const key = dayKey(selectedDate)
-    return calls.filter((c) => dayKey(new Date(c.timestamp)) === key)
-  }, [calls, selectedDate])
+    const now = new Date()
+    const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
+    const today = startOfDay(now)
+    const yesterday = startOfDay(new Date(now.getTime() - 86400_000))
+
+    return calls.filter((c) => {
+      const t = new Date(c.timestamp)
+      if (datePreset === "today") return dayKey(t) === dayKey(today)
+      if (datePreset === "yesterday") return dayKey(t) === dayKey(yesterday)
+      if (datePreset === "last7") return t >= new Date(now.getTime() - 7 * 86400_000)
+      if (datePreset === "last30") return t >= new Date(now.getTime() - 30 * 86400_000)
+      return true
+    })
+  }, [calls, datePreset])
 
   const filteredCalls = React.useMemo(() => {
     if (viewFilter === "all") return dateFilteredCalls
@@ -220,46 +225,43 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
     return { all: dateFilteredCalls.length, voice, web, recordings, transcripts }
   }, [dateFilteredCalls])
 
+  const presets: { key: DatePreset; label: string }[] = [
+    { key: "today", label: "Today" },
+    { key: "yesterday", label: "Yesterday" },
+    { key: "last7", label: "Last 7 days" },
+    { key: "last30", label: "Last 30 days" },
+  ]
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Call History</CardTitle>
         <CardDescription>Recent calls and web chats handled by your agents</CardDescription>
 
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <IconCalendar className="size-4" />
-            <span>{format(selectedDate, "MMM d, yyyy")}</span>
-          </div>
-          <Button variant={daysBack === 0 ? "default" : "outline"} size="sm" onClick={() => setDaysBack(0)}>
-            Today
-          </Button>
-          <Button variant={daysBack === 1 ? "default" : "outline"} size="sm" onClick={() => setDaysBack(1)}>
-            Yesterday
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Days back</span>
-            <input
-              type="number"
-              min={0}
-              value={daysBack}
-              onChange={(e) => {
-                const n = Number.parseInt(e.target.value || "0", 10)
-                setDaysBack(Number.isFinite(n) && n >= 0 ? n : 0)
-              }}
-              className="h-8 w-20 rounded-md border bg-background px-2 text-sm"
-            />
-          </div>
-        </div>
-
+        {/* Date presets */}
         <div className="flex flex-wrap gap-2 pt-2">
-          <Badge variant="secondary">Daily Total: {counts.all}</Badge>
-          <Badge variant="secondary">Calls: {counts.voice}</Badge>
-          <Badge variant="secondary">Web Chats: {counts.web}</Badge>
-          <Badge variant="secondary">Recordings: {counts.recordings}</Badge>
-          <Badge variant="secondary">Transcripts: {counts.transcripts}</Badge>
+          {presets.map((p) => (
+            <Button
+              key={p.key}
+              variant={datePreset === p.key ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDatePreset(p.key)}
+            >
+              {p.label}
+            </Button>
+          ))}
         </div>
 
+        {/* Stats */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground">
+          <span><span className="font-medium text-foreground">{counts.all}</span> total</span>
+          <span><span className="font-medium text-foreground">{counts.voice}</span> calls</span>
+          <span><span className="font-medium text-foreground">{counts.web}</span> web chats</span>
+          <span><span className="font-medium text-foreground">{counts.recordings}</span> recordings</span>
+          <span><span className="font-medium text-foreground">{counts.transcripts}</span> transcripts</span>
+        </div>
+
+        {/* Channel filter */}
         <div className="flex flex-wrap gap-2 pt-2">
           <Button variant={viewFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("all")}>
             All ({counts.all})
@@ -286,6 +288,7 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead>Duration</TableHead>
+                    <TableHead>Caller</TableHead>
                     <TableHead>Summary</TableHead>
                   </TableRow>
                 </TableHeader>
