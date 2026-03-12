@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
+import { useAgentsStore } from "@/stores"
 import { Spinner } from "@/components/ui/spinner"
 import { DashboardPanel } from "./DashboardPanel"
 import { DocumentsPanel } from "./DocumentsPanel"
@@ -18,15 +19,35 @@ import { SubscriptionPanel } from "./SubscriptionPanel"
 import { TokenUsagePanel } from "./TokenUsagePanel"
 
 function PanelContainerInner() {
-  const { view, agentId } = useViewParams()
+  const { view, agentId, setView } = useViewParams()
   const { user, loading: authLoading } = useAuth()
+  const { agents, fetchAgents } = useAgentsStore()
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["dashboard"]))
+  const [agentsChecked, setAgentsChecked] = useState(false)
 
   // Centralized auth gate
   useEffect(() => {
     if (!authLoading && !user) router.push("/login")
   }, [user, authLoading, router])
+
+  // Ensure first-time users (no agents) are taken directly to Create Agent.
+  useEffect(() => {
+    if (!user) {
+      setAgentsChecked(false)
+      return
+    }
+
+    setAgentsChecked(false)
+    fetchAgents(true).finally(() => setAgentsChecked(true))
+  }, [user, fetchAgents])
+
+  useEffect(() => {
+    if (!user || !agentsChecked) return
+    if (view === "dashboard" && agents.length === 0) {
+      setView("create-agent")
+    }
+  }, [user, agentsChecked, view, agents.length, setView])
 
   // Track visited panels for lazy mounting
   useEffect(() => {

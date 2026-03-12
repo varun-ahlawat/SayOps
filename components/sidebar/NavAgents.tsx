@@ -51,6 +51,14 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
     }
   }
 
+  const handleAgentsTitleClick = () => {
+    if (agents.length === 0) {
+      setView("create-agent")
+      return
+    }
+    setView("agent", { agentId: agents[0].id })
+  }
+
   return (
     <NavSection
       id="agents"
@@ -58,6 +66,7 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
       icon={<IconRobot className="size-4" />}
       showSearch
       searchPlaceholder="Search agents..."
+      onTitleClick={handleAgentsTitleClick}
       headerAction={
         <button
           onClick={() => setView("create-agent")}
