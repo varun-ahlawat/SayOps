@@ -48,7 +48,7 @@ function SpeakOpsWaveMark() {
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
-  const { setView } = useViewParams()
+  const { view, setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
@@ -112,6 +112,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     name: user?.displayName || user?.email?.split("@")[0] || "User",
     email: user?.email || "",
     avatar: user?.photoURL || "",
+  }
+
+  // First-time onboarding: keep the create-agent flow focused and full-width.
+  if (view === "create-agent" && agents.length === 0) {
+    return null
   }
 
   return (

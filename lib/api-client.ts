@@ -146,6 +146,35 @@ export async function deleteAgent(agentId: string): Promise<{ success: boolean }
   })
 }
 
+export async function requestAgentNumber(agentId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}/request-number`, {
+    method: "POST",
+  })
+}
+
+/**
+ * Bind an existing Vapi number to a specific agent.
+ *
+ * How to use:
+ * 1) Provision/connect number in Vapi first.
+ * 2) Call this endpoint with phoneNumber + vapiPhoneNumberId (+ optional vapiAssistantId).
+ * 3) Replace local agent state with returned `agent` to update the dashboard instantly.
+ */
+export async function assignExistingNumberToAgent(
+  agentId: string,
+  data: {
+    phoneNumber: string
+    vapiPhoneNumberId: string
+    vapiAssistantId?: string
+  }
+): Promise<Agent> {
+  const res = await apiFetch<{ agent: Agent }>(`/agents/${agentId}/assign-existing-number`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return res.agent
+}
+
 // ---- Chat / Interaction ----
 
 export async function chatWithAgent(
