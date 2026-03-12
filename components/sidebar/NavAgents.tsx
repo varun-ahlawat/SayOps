@@ -7,9 +7,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
-import { useSidebarStore } from "@/stores"
+import { useSidebarStore, useAgentsStore } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
+import { deleteAgent } from "@/lib/api-client"
+import { toast } from "sonner"
 
 interface Agent {
   id: string
@@ -19,6 +27,7 @@ interface Agent {
 
 export function NavAgents({ agents }: { agents: Agent[] }) {
   const { sections } = useSidebarStore()
+  const { removeAgent } = useAgentsStore()
   const { setView } = useViewParams()
   const searchQuery = sections.agents?.searchQuery || ""
 
@@ -28,6 +37,19 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
       agent.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [agents, searchQuery])
+
+  const handleDeleteAgent = async (agentId: string, agentName: string) => {
+    const confirmed = window.confirm(`Delete "${agentName}"? This action cannot be undone.`)
+    if (!confirmed) return
+
+    try {
+      await deleteAgent(agentId)
+      removeAgent(agentId)
+      toast.success("Agent deleted")
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to delete agent")
+    }
+  }
 
   return (
     <NavSection
@@ -49,10 +71,22 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
       <SidebarMenu>
         {filteredAgents.map((agent) => (
           <SidebarMenuItem key={agent.id}>
-            <SidebarMenuButton onClick={() => setView("agent", { agentId: agent.id })}>
-              <IconRobot className="size-4" />
-              <span className="truncate">{agent.name}</span>
-            </SidebarMenuButton>
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <SidebarMenuButton onClick={() => setView("agent", { agentId: agent.id })}>
+                  <IconRobot className="size-4" />
+                  <span className="truncate">{agent.name}</span>
+                </SidebarMenuButton>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleDeleteAgent(agent.id, agent.name)}
+                >
+                  Delete
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           </SidebarMenuItem>
         ))}
         {filteredAgents.length === 0 && searchQuery && (

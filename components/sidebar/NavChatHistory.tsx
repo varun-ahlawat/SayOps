@@ -7,11 +7,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore, useConversationsStore } from "@/stores"
 import { useAuth } from "@/lib/auth-context"
 import { getChatSummary } from "@/lib/utils"
 import { useEvaChatStore } from "@/stores/evaChatStore"
+import { deleteConversation } from "@/lib/api-client"
+import { toast } from "sonner"
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -28,7 +36,7 @@ function formatRelativeDate(dateStr: string): string {
 export function NavChatHistory() {
   const { user } = useAuth()
   const { sections } = useSidebarStore()
-  const { evaConversations, fetchEvaConversations, loading, error } = useConversationsStore()
+  const { evaConversations, fetchEvaConversations, invalidateAndRefetch, loading, error } = useConversationsStore()
   const searchQuery = sections.evaChat?.searchQuery || ""
 
   React.useEffect(() => {
@@ -56,6 +64,25 @@ export function NavChatHistory() {
     const store = useEvaChatStore.getState()
     store.startNewChat()
     store.setOpen(true)
+  }
+
+  const handleDeleteChat = async (chatId: string) => {
+    const confirmed = window.confirm("Delete this Eva chat? This action cannot be undone.")
+    if (!confirmed) return
+
+    try {
+      await deleteConversation(chatId)
+
+      const store = useEvaChatStore.getState()
+      if (store.conversationId === chatId) {
+        store.startNewChat()
+      }
+
+      await invalidateAndRefetch()
+      toast.success("Chat deleted")
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to delete chat")
+    }
   }
 
   return (
@@ -92,15 +119,27 @@ export function NavChatHistory() {
         ) : displayConversations.length > 0 ? (
           displayConversations.map((chat) => (
             <SidebarMenuItem key={chat.id}>
-              <SidebarMenuButton onClick={() => handleOpenChat(chat.id)}>
-                <IconMessage className="size-4 text-muted-foreground" />
-                <span className="truncate flex-1">
-                  {getChatSummary(chat.metadata, "Eva Chat")}
-                </span>
-                <span className="text-[10px] text-muted-foreground ml-auto">
-                  {formatRelativeDate(chat.started_at)}
-                </span>
-              </SidebarMenuButton>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <SidebarMenuButton onClick={() => handleOpenChat(chat.id)}>
+                    <IconMessage className="size-4 text-muted-foreground" />
+                    <span className="truncate flex-1">
+                      {getChatSummary(chat.metadata, "Eva Chat")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {formatRelativeDate(chat.started_at)}
+                    </span>
+                  </SidebarMenuButton>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => handleDeleteChat(chat.id)}
+                  >
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             </SidebarMenuItem>
           ))
         ) : (

@@ -7,11 +7,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useDocumentsStore } from "@/stores/documentsStore"
 import { useAuth } from "@/lib/auth-context"
+import { deleteDocument } from "@/lib/api-client"
+import { toast } from "sonner"
 
 const PAGE_SIZE = 6
 
@@ -19,7 +27,7 @@ export function NavDocuments() {
   const { user } = useAuth()
   const { sections } = useSidebarStore()
   const { setView } = useViewParams()
-  const { documents, fetchDocuments } = useDocumentsStore()
+  const { documents, fetchDocuments, removeDocument } = useDocumentsStore()
   const searchQuery = sections.documents?.searchQuery || ""
 
   const [showAll, setShowAll] = React.useState(false)
@@ -35,6 +43,19 @@ export function NavDocuments() {
 
   const visible = showAll ? filtered : filtered.slice(0, PAGE_SIZE)
   const hasMore = filtered.length > PAGE_SIZE
+
+  const handleDeleteDocument = async (docId: string, fileName: string) => {
+    const confirmed = window.confirm(`Delete "${fileName}"? This action cannot be undone.`)
+    if (!confirmed) return
+
+    try {
+      await deleteDocument(docId)
+      removeDocument(docId)
+      toast.success("Document deleted")
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to delete document")
+    }
+  }
 
   return (
     <NavSection
@@ -66,10 +87,22 @@ export function NavDocuments() {
           <>
             {visible.map((doc) => (
               <SidebarMenuItem key={doc.id}>
-                <SidebarMenuButton onClick={() => setView("documents")} title={doc.file_name}>
-                  <IconFile className="size-4 shrink-0" />
-                  <span className="truncate">{doc.file_name}</span>
-                </SidebarMenuButton>
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
+                    <SidebarMenuButton onClick={() => setView("documents")} title={doc.file_name}>
+                      <IconFile className="size-4 shrink-0" />
+                      <span className="truncate">{doc.file_name}</span>
+                    </SidebarMenuButton>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
+                    >
+                      Delete
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               </SidebarMenuItem>
             ))}
             {hasMore && !showAll && (
