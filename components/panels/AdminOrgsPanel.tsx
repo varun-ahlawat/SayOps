@@ -47,13 +47,17 @@ export function AdminOrgsPanel() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
   const [sortKey, setSortKey] = useState<SortKey>("newest")
   const [dotComOnly, setDotComOnly] = useState(false)
-  const [dismissedOrgs, setDismissedOrgs] = useState<Set<string>>(() => loadDismissed())
 
-  const dismissOrg = (e: React.MouseEvent, orgId: string) => {
+  const rejectOrg = async (e: React.MouseEvent, orgId: string) => {
     e.stopPropagation()
-    const next = new Set(dismissedOrgs).add(orgId)
-    setDismissedOrgs(next)
-    saveDismissed(next)
+    try {
+      await adminRejectNumberRequests(orgId)
+      setOrgs((prev) => prev.map((o) =>
+        o.id === orgId ? { ...o, pending_number_requests: 0 } : o
+      ))
+    } catch {
+      // silently ignore — UI stays as-is if request fails
+    }
   }
 
   // Redirect non-admins
@@ -95,7 +99,7 @@ export function AdminOrgsPanel() {
 
     // Status filter
     if (filterStatus === "pending") {
-      result = result.filter((o) => o.pending_number_requests > 0 && !dismissedOrgs.has(o.id))
+      result = result.filter((o) => o.pending_number_requests > 0)
     }
 
     // .com email filter
@@ -116,11 +120,11 @@ export function AdminOrgsPanel() {
     })
 
     return result
-  }, [orgs, search, filterStatus, sortKey, dotComOnly, dismissedOrgs])
+  }, [orgs, search, filterStatus, sortKey, dotComOnly])
 
   const pendingCount = useMemo(
-    () => orgs.filter((o) => o.pending_number_requests > 0 && !dismissedOrgs.has(o.id)).length,
-    [orgs, dismissedOrgs]
+    () => orgs.filter((o) => o.pending_number_requests > 0).length,
+    [orgs]
   )
   const hasActiveFilters = search || filterStatus !== "all" || sortKey !== "newest" || dotComOnly
 
@@ -245,7 +249,7 @@ export function AdminOrgsPanel() {
                   </tr>
                 ) : (
                   filtered.map((org) => {
-                    const hasPending = org.pending_number_requests > 0 && !dismissedOrgs.has(org.id)
+                    const hasPending = org.pending_number_requests > 0
                     return (
                       <tr
                         key={org.id}
@@ -276,7 +280,7 @@ export function AdminOrgsPanel() {
                         <td className="px-4 py-3 text-right w-10">
                           {hasPending && (
                             <button
-                              onClick={(e) => dismissOrg(e, org.id)}
+                              onClick={(e) => rejectOrg(e, org.id)}
                               title="Reject number request"
                               className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 hover:text-destructive dark:hover:text-destructive transition-colors"
                             >
