@@ -18,10 +18,18 @@ import { useSidebarStore, useAgentsStore } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
 import { deleteAgent } from "@/lib/api-client"
 import { toast } from "sonner"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Agent {
   id: string
   name: string
+  phone_number?: string | null
+  enabled_connectors?: string[] | null
   status?: "active" | "inactive"
 }
 
@@ -77,15 +85,40 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
         </button>
       }
     >
+      <TooltipProvider delayDuration={400}>
       <SidebarMenu>
         {filteredAgents.map((agent) => (
           <SidebarMenuItem key={agent.id}>
             <ContextMenu>
               <ContextMenuTrigger asChild>
-                <SidebarMenuButton onClick={() => setView("agent", { agentId: agent.id })}>
-                  <IconRobot className="size-4" />
-                  <span className="truncate">{agent.name}</span>
-                </SidebarMenuButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarMenuButton onClick={() => setView("agent", { agentId: agent.id })}>
+                      <IconRobot className="size-4" />
+                      <span className="truncate">{agent.name}</span>
+                    </SidebarMenuButton>
+                  </TooltipTrigger>
+                  {(agent.phone_number || agent.enabled_connectors?.length) ? (
+                    <TooltipContent side="right" className="flex flex-col gap-1 text-xs">
+                      {agent.phone_number && (
+                        <span className="font-mono">
+                          {agent.phone_number.startsWith("+1")
+                            ? "+1 " + agent.phone_number.slice(2)
+                            : agent.phone_number}
+                        </span>
+                      )}
+                      {agent.enabled_connectors?.length ? (
+                        <div className="flex flex-col gap-0.5">
+                          {agent.enabled_connectors.map((c) => (
+                            <span key={c} className="text-emerald-400 capitalize">
+                              {c.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </TooltipContent>
+                  ) : null}
+                </Tooltip>
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem
@@ -106,6 +139,7 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
           </SidebarMenuItem>
         )}
       </SidebarMenu>
+      </TooltipProvider>
     </NavSection>
   )
 }

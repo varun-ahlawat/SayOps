@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
-import { fetchAdminOrganizations } from "@/lib/api-client"
+import { fetchAdminOrganizations, adminRejectNumberRequests } from "@/lib/api-client"
 import type { AdminOrg } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,9 @@ import {
   IconPhone,
   IconSearch,
   IconX,
+  IconPhoneOff,
 } from "@tabler/icons-react"
+
 
 const PAGE_SIZE = 50
 
@@ -45,6 +47,14 @@ export function AdminOrgsPanel() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
   const [sortKey, setSortKey] = useState<SortKey>("newest")
   const [dotComOnly, setDotComOnly] = useState(false)
+  const [dismissedOrgs, setDismissedOrgs] = useState<Set<string>>(() => loadDismissed())
+
+  const dismissOrg = (e: React.MouseEvent, orgId: string) => {
+    e.stopPropagation()
+    const next = new Set(dismissedOrgs).add(orgId)
+    setDismissedOrgs(next)
+    saveDismissed(next)
+  }
 
   // Redirect non-admins
   useEffect(() => {
@@ -85,7 +95,7 @@ export function AdminOrgsPanel() {
 
     // Status filter
     if (filterStatus === "pending") {
-      result = result.filter((o) => o.pending_number_requests > 0)
+      result = result.filter((o) => o.pending_number_requests > 0 && !dismissedOrgs.has(o.id))
     }
 
     // .com email filter
@@ -106,9 +116,12 @@ export function AdminOrgsPanel() {
     })
 
     return result
-  }, [orgs, search, filterStatus, sortKey, dotComOnly])
+  }, [orgs, search, filterStatus, sortKey, dotComOnly, dismissedOrgs])
 
-  const pendingCount = useMemo(() => orgs.filter((o) => o.pending_number_requests > 0).length, [orgs])
+  const pendingCount = useMemo(
+    () => orgs.filter((o) => o.pending_number_requests > 0 && !dismissedOrgs.has(o.id)).length,
+    [orgs, dismissedOrgs]
+  )
   const hasActiveFilters = search || filterStatus !== "all" || sortKey !== "newest" || dotComOnly
 
   const clearFilters = () => {
@@ -220,6 +233,7 @@ export function AdminOrgsPanel() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tier</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Agents</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
+                  <th className="w-10" />
                 </tr>
               </thead>
               <tbody>
@@ -231,7 +245,7 @@ export function AdminOrgsPanel() {
                   </tr>
                 ) : (
                   filtered.map((org) => {
-                    const hasPending = org.pending_number_requests > 0
+                    const hasPending = org.pending_number_requests > 0 && !dismissedOrgs.has(org.id)
                     return (
                       <tr
                         key={org.id}
@@ -258,6 +272,18 @@ export function AdminOrgsPanel() {
                         <td className="px-4 py-3 text-muted-foreground">{org.agent_count}</td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {new Date(org.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right w-10">
+                          {hasPending && (
+                            <button
+                              onClick={(e) => dismissOrg(e, org.id)}
+                              title="Reject number request"
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 hover:text-destructive dark:hover:text-destructive transition-colors"
+                            >
+                              <IconPhoneOff className="size-3.5" />
+                              Reject
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )

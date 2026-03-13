@@ -777,6 +777,12 @@ export async function fetchAdminOrgAgents(orgId: string): Promise<AdminAgent[]> 
   return res.agents || []
 }
 
+export async function adminRejectNumberRequests(orgId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/admin/organizations/${encodeURIComponent(orgId)}/reject-number-requests`, {
+    method: "POST",
+  })
+}
+
 export async function adminAssignNumber(
   agentId: string,
   data: { phoneNumber: string; vapiPhoneNumberId: string; vapiAssistantId?: string }
