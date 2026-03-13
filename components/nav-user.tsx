@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import {
   IconCreditCard,
   IconDotsVertical,
@@ -30,7 +31,8 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { useTheme } from "next-themes"
+import { IconSun, IconMoon } from "@tabler/icons-react"
 
 export function NavUser({
   user,
@@ -44,6 +46,9 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
   const { setView } = useViewParams()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
 
   const initials = user.name
     .split(" ")
@@ -76,13 +81,18 @@ export function NavUser({
                   {user.email}
                 </span>
               </div>
-              <span
-                className="ml-auto flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <ThemeToggle />
-              </span>
+              {mounted && (
+                <span
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={(e) => { e.stopPropagation(); setTheme(resolvedTheme === "dark" ? "light" : "dark") }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  aria-label="Toggle theme"
+                >
+                  {resolvedTheme === "dark"
+                    ? <IconMoon className="size-4" />
+                    : <IconSun className="size-4" />}
+                </span>
+              )}
               <IconDotsVertical className="size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
