@@ -16,6 +16,8 @@ export type ViewId =
   | "create-agent"
   | "payments"
   | "token-usage"
+  | "admin-orgs"
+  | "admin-org-detail"
 
 export function useViewParams() {
   const searchParams = useSearchParams()
@@ -24,6 +26,7 @@ export function useViewParams() {
 
   const view = (searchParams.get("view") as ViewId) || "dashboard"
   const agentId = searchParams.get("agentId")
+  const orgId = searchParams.get("orgId")
 
   const setView = useCallback(
     (newView: ViewId, params?: Record<string, string>) => {
@@ -31,7 +34,9 @@ export function useViewParams() {
       p.set("view", newView)
       // Clear agent-specific params when switching away from agent view
       if (newView !== "agent") p.delete("agentId")
-      // Set additional params (e.g., agentId for agent view)
+      // Clear org-specific params when switching away from admin-org-detail
+      if (newView !== "admin-org-detail") p.delete("orgId")
+      // Set additional params (e.g., agentId for agent view, orgId for admin-org-detail)
       if (params) {
         Object.entries(params).forEach(([k, v]) => p.set(k, v))
       }
@@ -40,5 +45,5 @@ export function useViewParams() {
     [searchParams, router, pathname]
   )
 
-  return { view, agentId, setView }
+  return { view, agentId, orgId, setView }
 }

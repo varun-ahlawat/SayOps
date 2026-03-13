@@ -33,6 +33,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useTheme } from "next-themes"
 import { IconSun, IconMoon } from "@tabler/icons-react"
+import { Badge } from "@/components/ui/badge"
 
 export function NavUser({
   user,
@@ -44,7 +45,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const { signOut } = useAuth()
+  const { signOut, isPlatformAdmin } = useAuth()
   const { setView } = useViewParams()
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
@@ -76,7 +77,12 @@ export function NavUser({
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate font-medium flex items-center gap-1.5">
+                  {user.name}
+                  {isPlatformAdmin && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Admin</Badge>
+                  )}
+                </span>
                 <span className="text-muted-foreground truncate text-xs">
                   {user.email}
                 </span>

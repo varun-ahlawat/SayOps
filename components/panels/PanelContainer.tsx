@@ -17,9 +17,11 @@ import { CreateAgentPanel } from "./CreateAgentPanel"
 import { BillingPanel } from "./PaymentsPanel"
 import { SubscriptionPanel } from "./SubscriptionPanel"
 import { TokenUsagePanel } from "./TokenUsagePanel"
+import { AdminOrgsPanel } from "./AdminOrgsPanel"
+import { AdminOrgDetailPanel } from "./AdminOrgDetailPanel"
 
 function PanelContainerInner() {
-  const { view, agentId, setView } = useViewParams()
+  const { view, agentId, orgId, setView } = useViewParams()
   const { user, loading: authLoading } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
   const router = useRouter()
@@ -52,7 +54,7 @@ function PanelContainerInner() {
   // Track visited panels for lazy mounting
   useEffect(() => {
     const normalizedView = view === "settings" ? "account" : view
-    const key = normalizedView === "agent" ? "agent" : normalizedView
+    const key = normalizedView === "agent" ? "agent" : normalizedView === "admin-org-detail" ? "admin-org-detail" : normalizedView
     setVisited((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
   }, [view])
 
@@ -99,6 +101,12 @@ function PanelContainerInner() {
       </Panel>
       <Panel active={view === "token-usage"} visited={visited.has("token-usage")}>
         <TokenUsagePanel />
+      </Panel>
+      <Panel active={view === "admin-orgs"} visited={visited.has("admin-orgs")}>
+        <AdminOrgsPanel />
+      </Panel>
+      <Panel active={view === "admin-org-detail"} visited={visited.has("admin-org-detail")}>
+        <AdminOrgDetailPanel orgId={orgId} />
       </Panel>
     </>
   )

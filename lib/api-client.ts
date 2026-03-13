@@ -19,6 +19,8 @@ import type {
   LlmTraceDebugSession,
   OwnerClaimPreview,
   OwnerClaimCompletion,
+  AdminOrg,
+  AdminAgent,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -761,6 +763,29 @@ export async function fetchUsageBreakdown(
   rows: UsageBreakdownRow[]
 }> {
   return apiFetch(`/usage/breakdown?groupBy=${groupBy}&period=${period}`)
+}
+
+// ---- Platform Admin ----
+
+export async function fetchAdminOrganizations(page = 0, limit = 50): Promise<{ organizations: AdminOrg[]; total: number }> {
+  const offset = page * limit
+  return apiFetch<{ organizations: AdminOrg[]; total: number }>(`/admin/organizations?limit=${limit}&offset=${offset}`)
+}
+
+export async function fetchAdminOrgAgents(orgId: string): Promise<AdminAgent[]> {
+  const res = await apiFetch<{ agents: AdminAgent[] }>(`/admin/organizations/${encodeURIComponent(orgId)}/agents`)
+  return res.agents || []
+}
+
+export async function adminAssignNumber(
+  agentId: string,
+  data: { phoneNumber: string; vapiPhoneNumberId: string; vapiAssistantId?: string }
+): Promise<AdminAgent> {
+  const res = await apiFetch<{ agent: AdminAgent }>(`/admin/agents/${encodeURIComponent(agentId)}/assign-number`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return res.agent
 }
 
 // ---- Stats (To be implemented in backend if missing) ----

@@ -9,12 +9,14 @@ import {
   type User as FirebaseUser,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
+import { fetchCurrentUser } from "@/lib/api-client"
 
 const googleProvider = new GoogleAuthProvider()
 
 interface AuthContextType {
   user: FirebaseUser | null
   loading: boolean
+  isPlatformAdmin: boolean
   signInWithGoogle: () => Promise<FirebaseUser>
   signOut: () => Promise<void>
   getToken: () => Promise<string | null>
@@ -26,6 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
 
   useEffect(() => {
     // Dev auth bypass must be explicitly enabled; public routes should stay public by default.
@@ -42,8 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u)
+      if (u) {
+        try {
+          const { user: member } = await fetchCurrentUser()
+          setIsPlatformAdmin(member?.is_platform_admin === true)
+        } catch {
+          setIsPlatformAdmin(false)
+        }
+      } else {
+        setIsPlatformAdmin(false)
+      }
       setLoading(false)
     })
     return unsubscribe
@@ -75,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, signInWithGoogle, signOut: signOutFn, getToken, refreshUser }}
+      value={{ user, loading, isPlatformAdmin, signInWithGoogle, signOut: signOutFn, getToken, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

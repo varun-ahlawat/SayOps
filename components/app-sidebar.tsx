@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard, IconCoin } from "@tabler/icons-react"
+import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard, IconCoin, IconBuilding } from "@tabler/icons-react"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -46,7 +46,7 @@ function SpeakOpsWaveMark() {
 }
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth()
+  const { user, isPlatformAdmin } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
   const { view, setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
@@ -224,6 +224,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       <span>Payments</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  {isPlatformAdmin && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={() => setView("admin-orgs")} className="gap-2">
+                        <IconBuilding className="size-4 text-sky-500" />
+                        <span>Organizations</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
                 <NavIntegrations />
               </div>

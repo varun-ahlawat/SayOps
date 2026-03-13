@@ -29,6 +29,34 @@ export interface OrgMember {
   display_name: string | null
   role: 'owner' | 'admin' | 'member'
   is_active: boolean
+  is_platform_admin?: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Platform admin types (admin panel)
+
+export interface AdminOrg {
+  id: string
+  name: string
+  owner_user_id: string
+  owner_email: string | null
+  subscription_tier: string
+  agent_count: number
+  pending_number_requests: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminAgent {
+  id: string
+  name: string
+  organization_id: string
+  is_active: boolean
+  phone_number: string | null
+  vapi_assistant_id: string | null
+  vapi_phone_number_id: string | null
+  number_requested_at: string | null
   created_at: string
   updated_at: string
 }
