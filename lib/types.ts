@@ -55,6 +55,7 @@ export interface Agent {
   max_tokens: number | null
   is_active: boolean
   phone_number: string | null
+  number_requested_at: string | null
   business_hours_enabled?: boolean
   business_hours_start?: string | null
   business_hours_end?: string | null

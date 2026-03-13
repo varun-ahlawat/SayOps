@@ -20,11 +20,14 @@ export default function LoginPage() {
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState("")
 
-  if (!loading && user) {
-    const search = typeof window !== 'undefined' ? window.location.search : ''
-    router.push(`/dashboard${search}`)
-    return null
-  }
+  React.useEffect(() => {
+    if (!loading && user) {
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      router.push(`/dashboard${search}`)
+    }
+  }, [loading, user, router])
+
+  if (!loading && user) return null
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true)
