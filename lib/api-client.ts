@@ -25,6 +25,128 @@ import type {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
 
+export interface ChatHistoryEntry {
+  role: 'user' | 'assistant' | 'tool'
+  content?: string | MessagePart[] | null
+  tool_calls?: { name: string; arguments?: Record<string, unknown> }[]
+  tool_result?: { name: string; output: unknown }
+}
+
+export interface ChatStreamCallbacks {
+  onTextDelta?: (delta: string) => void
+  onToolStart?: (tool: { name: string; args: Record<string, unknown> }) => void
+  onToolEnd?: (tool: { name: string; result: unknown; error?: boolean }) => void
+  onDone?: (response: ChatResponse) => void
+}
+
+interface ChatStreamEvent {
+  text?: string
+  tool_start?: { name: string; args: Record<string, unknown> }
+  tool_end?: { name: string; result: unknown; error?: boolean }
+  done?: ChatResponse
+  error?: string
+}
+
+function buildApiUrl(endpoint: string): string {
+  if (endpoint.startsWith("http")) return endpoint
+  return `${BACKEND_URL}${endpoint.startsWith("/api") ? "" : "/api"}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`
+}
+
+async function parseErrorMessage(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "")
+  if (!text) return `API error: ${res.status}`
+
+  try {
+    const parsed = JSON.parse(text)
+    if (typeof parsed?.error === "string" && parsed.error.trim()) {
+      return parsed.error
+    }
+  } catch {}
+
+  return text
+}
+
+async function consumeChatStream(
+  stream: ReadableStream<Uint8Array>,
+  callbacks?: ChatStreamCallbacks
+): Promise<ChatResponse> {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  let finalResponse: ChatResponse | null = null
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done })
+      buffer = buffer.replace(/\r\n/g, "\n")
+
+      let boundaryIndex = buffer.indexOf("\n\n")
+      while (boundaryIndex !== -1) {
+        const rawEvent = buffer.slice(0, boundaryIndex)
+        buffer = buffer.slice(boundaryIndex + 2)
+
+        const data = rawEvent
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n")
+
+        if (!data) {
+          boundaryIndex = buffer.indexOf("\n\n")
+          continue
+        }
+
+        if (data === "[DONE]") {
+          if (finalResponse) return finalResponse
+          boundaryIndex = buffer.indexOf("\n\n")
+          continue
+        }
+
+        let payload: ChatStreamEvent
+        try {
+          payload = JSON.parse(data)
+        } catch {
+          throw new Error("Invalid chat stream payload")
+        }
+
+        if (payload.error) {
+          throw new Error(payload.error)
+        }
+
+        if (typeof payload.text === "string" && payload.text.length > 0) {
+          callbacks?.onTextDelta?.(payload.text)
+        }
+
+        if (payload.tool_start) {
+          callbacks?.onToolStart?.(payload.tool_start)
+        }
+
+        if (payload.tool_end) {
+          callbacks?.onToolEnd?.(payload.tool_end)
+        }
+
+        if (payload.done) {
+          finalResponse = payload.done
+          callbacks?.onDone?.(payload.done)
+        }
+
+        boundaryIndex = buffer.indexOf("\n\n")
+      }
+
+      if (done) break
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  if (!finalResponse) {
+    throw new Error("Chat stream ended before final response")
+  }
+
+  return finalResponse
+}
+
 /** Get auth headers for API calls. */
 async function getAuthHeaders(): Promise<HeadersInit> {
   const user = auth.currentUser
@@ -36,7 +158,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 /** Typed fetch wrapper that includes auth headers. */
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const headers = await getAuthHeaders()
-  const url = endpoint.startsWith("http") ? endpoint : `${BACKEND_URL}${endpoint.startsWith("/api") ? "" : "/api"}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`
+  const url = buildApiUrl(endpoint)
   
   const res = await fetch(url, {
     ...options,
@@ -48,8 +170,7 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(error.error || `API error: ${res.status}`)
+    throw new Error(await parseErrorMessage(res))
   }
 
   return res.json()
@@ -184,11 +305,18 @@ export async function chatWithAgent(
   agentId?: string,
   customerId?: string,
   conversationId?: string,
-  history?: { role: 'user' | 'assistant' | 'tool'; content?: string | MessagePart[] | null; tool_calls?: { name: string; arguments?: Record<string, unknown> }[]; tool_result?: { name: string; output: unknown } }[]
+  history?: ChatHistoryEntry[],
+  callbacks?: ChatStreamCallbacks
 ): Promise<ChatResponse> {
   try {
-    const response = await apiFetch<ChatResponse>("/agent", {
+    const headers = await getAuthHeaders()
+    const response = await fetch(buildApiUrl("/agent/stream"), {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+        ...headers,
+      },
       body: JSON.stringify({
         prompt,
         agent: agentId,
@@ -198,8 +326,17 @@ export async function chatWithAgent(
       }),
     })
 
-    publishAgentTraceSession(response.sessionID, agentId || "super")
-    return response
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response))
+    }
+    if (!response.body) {
+      throw new Error("Chat stream response body missing")
+    }
+
+    const finalResponse = await consumeChatStream(response.body, callbacks)
+
+    publishAgentTraceSession(finalResponse.sessionID, agentId || "super")
+    return finalResponse
   } catch (err) {
     publishAgentTraceError(err instanceof Error ? err.message : "Agent request failed")
     throw err

@@ -12,10 +12,14 @@ import { cn } from "@/lib/utils"
 import { ensureAgentTraceInspectorWindow } from "@/lib/agent-trace-debug"
 
 interface TestMessage {
+  id: string
   role: 'user' | 'assistant'
   content: string
-  toolCalls?: { name: string; args: any }[]
+  toolCalls?: { name: string; args?: any; result?: any; status?: 'running' | 'completed' | 'error' }[]
+  streaming?: boolean
 }
+
+const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 
 export function TestModeSimulator({ agentId }: { agentId: string }) {
   const [messages, setMessages] = useState<TestMessage[]>([])
@@ -56,6 +60,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
           content = m.content.filter(p => p.type === 'text').map(p => p.text).join("\n") || ""
         }
         return {
+          id: m.id || generateMessageId(),
           role: m.role as 'user' | 'assistant',
           content,
           toolCalls: m.tool_calls || undefined
@@ -91,30 +96,97 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
   const handleSend = useCallback(async (content: string, _files: File[]) => {
     ensureAgentTraceInspectorWindow()
 
-    const userMsg: TestMessage = { role: 'user', content }
-    setMessages(prev => [...prev, userMsg])
+    const userMsg: TestMessage = { id: generateMessageId(), role: 'user', content }
+    const assistantMessageId = generateMessageId()
+    setMessages(prev => [
+      ...prev,
+      userMsg,
+      {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        streaming: true,
+      },
+    ])
     setIsLoading(true)
 
     try {
-      const response = await chatWithAgent(content, agentId, undefined, conversationId || undefined)
+      const response = await chatWithAgent(content, agentId, undefined, conversationId || undefined, undefined, {
+        onTextDelta: (delta) => {
+          setMessages(prev => prev.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            return {
+              ...message,
+              content: `${message.content}${delta}`,
+            }
+          }))
+        },
+        onToolStart: (tool) => {
+          setMessages(prev => prev.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            return {
+              ...message,
+              toolCalls: [
+                ...(message.toolCalls ?? []),
+                { name: tool.name, args: tool.args, status: 'running' },
+              ],
+            }
+          }))
+        },
+        onToolEnd: (tool) => {
+          setMessages(prev => prev.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            const nextToolCalls = [...(message.toolCalls ?? [])]
+            for (let i = nextToolCalls.length - 1; i >= 0; i--) {
+              if (nextToolCalls[i].name === tool.name && nextToolCalls[i].status === 'running') {
+                nextToolCalls[i] = {
+                  ...nextToolCalls[i],
+                  result: tool.result,
+                  status: tool.error ? 'error' : 'completed',
+                }
+                return {
+                  ...message,
+                  toolCalls: nextToolCalls,
+                }
+              }
+            }
 
-      const assistantMsg: TestMessage = {
-        role: 'assistant',
-        content: response.output,
-        toolCalls: response.toolCalls
-      }
-      setMessages(prev => [...prev, assistantMsg])
+            return {
+              ...message,
+              toolCalls: [
+                ...nextToolCalls,
+                { name: tool.name, result: tool.result, status: tool.error ? 'error' : 'completed' },
+              ],
+            }
+          }))
+        },
+      })
 
-      if (!conversationId && response.sessionID) {
-        // Find the conversation ID matching this execution/session.
-        const convs = await loadConversations()
-        const newActive = convs.find(c => c.status !== 'completed' && c.status !== 'archived')
-        if (newActive) {
-          setConversationId(newActive.id)
+      setMessages(prev => prev.map((message) => {
+        if (message.id !== assistantMessageId) return message
+        return {
+          ...message,
+          content: message.content || response.output,
+          streaming: false,
+          toolCalls: response.toolCalls,
         }
+      }))
+
+      if (response.conversationId) {
+        setConversationId(response.conversationId)
       }
+      await loadConversations()
     } catch (err) {
       console.error("Test chat failed:", err)
+      setMessages(prev => prev.map((message) => {
+        if (message.id !== assistantMessageId) return message
+        return {
+          ...message,
+          content: message.content || "Sorry, something went wrong.",
+          streaming: false,
+        }
+      }))
     } finally {
       setIsLoading(false)
     }
@@ -219,8 +291,8 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
               </div>
             ) : (
               <div className="space-y-6">
-                {messages.map((msg, i) => (
-                  <div key={i} className={cn("flex flex-col gap-2", msg.role === 'user' ? "items-end" : "items-start")}>
+                {messages.map((msg) => (
+                  <div key={msg.id} className={cn("flex flex-col gap-2", msg.role === 'user' ? "items-end" : "items-start")}>
                     <div className="flex items-center gap-2 mb-1">
                       {msg.role === 'assistant' ? (
                         <>
@@ -242,6 +314,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
                         : "bg-background border border-primary/10 rounded-tl-none"
                     )}>
                       {msg.content}
+                      {msg.streaming && <span className="ml-1 inline-block size-2 rounded-full bg-primary animate-pulse align-middle" />}
                     </div>
 
                     {msg.toolCalls && msg.toolCalls.length > 0 && (
@@ -255,7 +328,7 @@ export function TestModeSimulator({ agentId }: { agentId: string }) {
                     )}
                   </div>
                 ))}
-                {isLoading && (
+                {isLoading && !messages.some((message) => message.streaming) && (
                   <div className="flex flex-col items-start gap-2 animate-pulse">
                     <div className="flex items-center gap-2 mb-1">
                       <IconRobot className="size-4 text-primary" />

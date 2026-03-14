@@ -52,6 +52,7 @@ export function UniversalChat({
   const { setView } = useViewParams()
   const { evaConversations, fetchEvaConversations } = useConversationsStore()
   const [historyOpen, setHistoryOpen] = React.useState(false)
+  const hasStreamingAssistant = messages.some((message) => message.role === "assistant" && message.isStreaming)
 
   // Tracks whether viewport is below lg (1024px) — used only for conditional inline style
   const [isNarrow, setIsNarrow] = React.useState(false)
@@ -223,9 +224,10 @@ export function UniversalChat({
                 content={msg.content}
                 timestamp={msg.timestamp}
                 toolCalls={msg.toolCalls}
+                isStreaming={msg.isStreaming}
               />
             ))}
-            {isLoading && (
+            {isLoading && !hasStreamingAssistant && (
               <div className="flex gap-3">
                 <div className="size-8 rounded-lg flex items-center justify-center bg-primary text-primary-foreground shrink-0">
                   <IconMessageChatbot className="size-4" />

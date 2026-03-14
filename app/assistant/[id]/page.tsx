@@ -36,12 +36,22 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   send_email: <IconMail className="size-3" />,
 }
 
+interface AssistantMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  tool_calls?: { name: string; args?: any; result?: any }[]
+  streaming?: boolean
+}
+
+const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+
 export default function AssistantChatPage() {
   const { id } = useParams() as { id: string }
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
 
@@ -57,7 +67,18 @@ export default function AssistantChatPage() {
     async function load() {
       try {
         const data = await fetchMessages(id)
-        setMessages(data)
+        setMessages(data
+          .filter((message) => message.role === "user" || message.role === "assistant")
+          .map((message, index) => ({
+            id: message.id || `${index}-${generateMessageId()}`,
+            role: message.role as "user" | "assistant",
+            content: typeof message.content === "string"
+              ? message.content
+              : Array.isArray(message.content)
+                ? message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n")
+                : "",
+            tool_calls: message.tool_calls || undefined,
+          })))
       } catch (err) {
         console.error("Failed to load messages:", err)
       } finally {
@@ -77,24 +98,55 @@ export default function AssistantChatPage() {
   const handleSend = useCallback(async (content: string, _files: File[]) => {
     ensureAgentTraceInspectorWindow()
 
-    setMessages((prev) => [...prev, { role: "user", content }])
+    const userMessageId = generateMessageId()
+    const assistantMessageId = generateMessageId()
+    setMessages((prev) => [
+      ...prev,
+      { id: userMessageId, role: "user", content },
+      { id: assistantMessageId, role: "assistant", content: "", tool_calls: [], streaming: true },
+    ])
     setSending(true)
 
     try {
-      const res = await chatWithAgent(content, "super", undefined, id)
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: res.output,
-          tool_calls: res.toolCalls,
+      const res = await chatWithAgent(content, "super", undefined, id, undefined, {
+        onTextDelta: (delta) => {
+          setMessages((prev) => prev.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            return {
+              ...message,
+              content: `${message.content}${delta}`,
+            }
+          }))
         },
-      ])
+        onToolStart: (tool) => {
+          setMessages((prev) => prev.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            return {
+              ...message,
+              tool_calls: [...(message.tool_calls ?? []), { name: tool.name, args: tool.args }],
+            }
+          }))
+        },
+      })
+
+      setMessages((prev) => prev.map((message) => {
+        if (message.id !== assistantMessageId) return message
+        return {
+          ...message,
+          content: message.content || res.output,
+          tool_calls: res.toolCalls,
+          streaming: false,
+        }
+      }))
     } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Error: ${err.message}` },
-      ])
+      setMessages((prev) => prev.map((message) => {
+        if (message.id !== assistantMessageId) return message
+        return {
+          ...message,
+          content: message.content || `Error: ${err.message}`,
+          streaming: false,
+        }
+      }))
     } finally {
       setSending(false)
     }
@@ -125,13 +177,14 @@ export default function AssistantChatPage() {
           {/* Messages */}
           <ScrollArea ref={scrollRef} className="flex-1 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
-              {messages.map((msg, i) => (
-                <div key={i} className={cn("flex flex-col", msg.role === "user" ? "items-end" : "items-start")}>
+              {messages.map((msg) => (
+                <div key={msg.id} className={cn("flex flex-col", msg.role === "user" ? "items-end" : "items-start")}>
                   <div className={cn(
                     "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
                     msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted shadow-sm"
                   )}>
                     {msg.content}
+                    {msg.streaming && <span className="ml-1 inline-block size-2 rounded-full bg-primary animate-pulse align-middle" />}
                     
                     {msg.tool_calls && msg.tool_calls.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-muted-foreground/10 flex flex-wrap gap-2">
@@ -146,7 +199,7 @@ export default function AssistantChatPage() {
                   </div>
                 </div>
               ))}
-              {sending && (
+              {sending && !messages.some((message) => message.streaming) && (
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-2xl px-4 py-3">
                     <IconLoader2 className="size-4 animate-spin" />

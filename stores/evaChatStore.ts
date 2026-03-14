@@ -10,7 +10,8 @@ export interface EvaMessage {
   role: 'user' | 'assistant' | 'tool'
   content: string | MessagePart[]
   timestamp: number
-  toolCalls?: { name: string; args: any; result?: any; status: 'pending' | 'running' | 'completed' | 'error' }[]
+  toolCalls?: { name: string; args?: any; result?: any; status: 'pending' | 'running' | 'completed' | 'error' }[]
+  isStreaming?: boolean
 }
 
 interface EvaChatState {
@@ -36,6 +37,114 @@ interface EvaChatState {
 }
 
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+function appendAssistantDelta(messages: EvaMessage[], messageId: string, delta: string): EvaMessage[] {
+  return messages.map((message) => {
+    if (message.id !== messageId) return message
+    const current = typeof message.content === 'string' ? message.content : ''
+    return {
+      ...message,
+      content: current + delta,
+    }
+  })
+}
+
+function markToolStart(
+  tools: NonNullable<EvaMessage['toolCalls']>,
+  nextTool: { name: string; args: Record<string, unknown> }
+): NonNullable<EvaMessage['toolCalls']> {
+  return [
+    ...tools,
+    {
+      name: nextTool.name,
+      args: nextTool.args,
+      status: 'running',
+    },
+  ]
+}
+
+function markToolEnd(
+  tools: NonNullable<EvaMessage['toolCalls']>,
+  nextTool: { name: string; result: unknown; error?: boolean }
+): NonNullable<EvaMessage['toolCalls']> {
+  const updated = [...tools]
+
+  for (let i = updated.length - 1; i >= 0; i--) {
+    const tool = updated[i]
+    if (tool.name === nextTool.name && tool.status !== 'completed' && tool.status !== 'error') {
+      updated[i] = {
+        ...tool,
+        result: nextTool.result,
+        status: nextTool.error ? 'error' : 'completed',
+      }
+      return updated
+    }
+  }
+
+  updated.push({
+    name: nextTool.name,
+    result: nextTool.result,
+    status: nextTool.error ? 'error' : 'completed',
+  })
+  return updated
+}
+
+function finalizeAssistantMessage(
+  messages: EvaMessage[],
+  messageId: string,
+  output: string,
+  toolCalls?: { name: string; args: any; result?: any }[]
+): EvaMessage[] {
+  return messages.map((message) => {
+    if (message.id !== messageId) return message
+    const current = typeof message.content === 'string' ? message.content : ''
+    const existingToolCalls = message.toolCalls ?? []
+    const mergedToolCalls = toolCalls?.map((tool, index) => {
+      const existing = existingToolCalls[index]
+      const status: 'completed' | 'error' = existing?.status === 'error' ? 'error' : 'completed'
+      return {
+        name: tool.name,
+        args: tool.args,
+        result: tool.result,
+        status,
+      }
+    }) ?? message.toolCalls
+
+    return {
+      ...message,
+      content: current || output,
+      isStreaming: false,
+      toolCalls: mergedToolCalls,
+    }
+  })
+}
+
+function failAssistantMessage(messages: EvaMessage[], messageId: string, fallback: string): EvaMessage[] {
+  let found = false
+  const nextMessages = messages.map((message) => {
+    if (message.id !== messageId) return message
+    found = true
+    const current = typeof message.content === 'string' ? message.content : ''
+    return {
+      ...message,
+      content: current || fallback,
+      isStreaming: false,
+    }
+  })
+
+  if (found) return nextMessages
+
+  return [
+    ...messages,
+    {
+      id: generateId(),
+      role: 'assistant',
+      content: fallback,
+      timestamp: Date.now(),
+      isStreaming: false,
+    },
+  ]
+}
 
 // Helper to convert File to Base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -178,6 +287,7 @@ async function processMessage(
     content,
     timestamp: Date.now(),
   }
+  const assistantMessageId = generateId()
 
   set((state) => ({
     messages: [...state.messages, userMsg],
@@ -223,20 +333,49 @@ async function processMessage(
       if (history.length === 0) history = undefined
     }
 
-    const response = await chatWithAgent(content, 'super', undefined, currentConversationId, history)
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+          toolCalls: [],
+          isStreaming: true,
+        },
+      ],
+    }))
 
-    const assistantMsg: EvaMessage = {
-      id: generateId(),
-      role: 'assistant',
-      content: response.output,
-      timestamp: Date.now(),
-      toolCalls: response.toolCalls?.map((t) => ({
-        name: t.name,
-        args: t.args,
-        result: t.result,
-        status: 'completed' as const,
-      })),
-    }
+    const response = await chatWithAgent(content, 'super', undefined, currentConversationId, history, {
+      onTextDelta: (delta) => {
+        set((state) => ({
+          messages: appendAssistantDelta(state.messages, assistantMessageId, delta),
+        }))
+      },
+      onToolStart: (tool) => {
+        set((state) => ({
+          messages: state.messages.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            return {
+              ...message,
+              toolCalls: markToolStart(message.toolCalls ?? [], tool),
+            }
+          }),
+        }))
+      },
+      onToolEnd: (tool) => {
+        set((state) => ({
+          messages: state.messages.map((message) => {
+            if (message.id !== assistantMessageId) return message
+            return {
+              ...message,
+              toolCalls: markToolEnd(message.toolCalls ?? [], tool),
+            }
+          }),
+        }))
+      },
+    })
 
     const navCall = response.toolCalls?.find((t) => t.name === 'navigate_to_page')
     const pendingNavigation = navCall
@@ -244,7 +383,7 @@ async function processMessage(
       : null
 
     set((state) => ({
-      messages: [...state.messages, assistantMsg],
+      messages: finalizeAssistantMessage(state.messages, assistantMessageId, response.output, response.toolCalls),
       conversationId: response.conversationId || state.conversationId || currentConversationId || null,
       isLoading: false,
       pendingNavigation,
@@ -252,14 +391,12 @@ async function processMessage(
 
     useConversationsStore.getState().invalidateAndRefetch()
   } catch (err) {
-    const errorMsg: EvaMessage = {
-      id: generateId(),
-      role: 'assistant',
-      content: 'Sorry, I encountered an error. Please try again.',
-      timestamp: Date.now(),
-    }
     set((state) => ({
-      messages: [...state.messages, errorMsg],
+      messages: failAssistantMessage(
+        state.messages,
+        state.messages[state.messages.length - 1]?.id ?? '',
+        'Sorry, I encountered an error. Please try again.',
+      ),
       isLoading: false,
       error: (err as Error).message,
     }))
