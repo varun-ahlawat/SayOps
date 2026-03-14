@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
+import { EvaPhoneCard } from "@/components/eva/EvaPhoneCard"
 import { useAuth } from "@/lib/auth-context"
-import { fetchConversations, chatWithAgent, createConversation } from "@/lib/api-client"
+import { fetchConversations, createConversation } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconMessageChatbot, IconPlus, IconArrowRight } from "@tabler/icons-react"
@@ -70,6 +71,8 @@ export default function AssistantPage() {
               New Strategy Session
             </Button>
           </div>
+
+          <EvaPhoneCard />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {conversations.length === 0 ? (

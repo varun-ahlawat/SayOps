@@ -1,51 +1,47 @@
 "use client"
 
-import { assignExistingNumberToAgent } from "@/lib/api-client"
-import type { Agent } from "@/lib/types"
+import { assignExistingEvaNumber } from "@/lib/api-client"
+import type { EvaNumberBinding } from "@/lib/types"
 import { BindExistingNumberDialog } from "@/components/phone/BindExistingNumberDialog"
 import type { ButtonProps } from "@/components/ui/button"
 
-interface AssignExistingNumberDialogProps {
-  agentId: string
-  agentName: string
+interface AssignExistingEvaNumberDialogProps {
   currentPhoneNumber?: string | null
-  onAssigned: (agent: Agent) => void
+  onAssigned: (binding: EvaNumberBinding) => void
   buttonLabel?: string
   buttonVariant?: ButtonProps["variant"]
   buttonSize?: ButtonProps["size"]
   buttonClassName?: string
 }
 
-export function AssignExistingNumberDialog({
-  agentId,
-  agentName,
+export function AssignExistingEvaNumberDialog({
   currentPhoneNumber,
   onAssigned,
   buttonLabel,
   buttonVariant = "outline",
   buttonSize = "default",
   buttonClassName,
-}: AssignExistingNumberDialogProps) {
+}: AssignExistingEvaNumberDialogProps) {
   const resolvedButtonLabel = buttonLabel ?? (
-    currentPhoneNumber ? "Replace Existing Number" : "Use Existing Number"
+    currentPhoneNumber ? "Replace EVA Number" : "Use Existing Number"
   )
 
   return (
     <BindExistingNumberDialog
-      subjectLabel={agentName}
+      subjectLabel="Eva"
       currentPhoneNumber={currentPhoneNumber}
       buttonLabel={resolvedButtonLabel}
       buttonVariant={buttonVariant}
       buttonSize={buttonSize}
       buttonClassName={buttonClassName}
       onBind={async (request) => {
-        const updatedAgent = await assignExistingNumberToAgent(agentId, request)
-        onAssigned(updatedAgent)
+        const binding = await assignExistingEvaNumber(request)
+        onAssigned(binding)
       }}
       successMessage={(phoneNumber) => (
         currentPhoneNumber && currentPhoneNumber !== phoneNumber
-          ? `Replaced ${currentPhoneNumber} on ${agentName}`
-          : `Bound ${phoneNumber} to ${agentName}`
+          ? `Replaced Eva number ${currentPhoneNumber}`
+          : `Bound ${phoneNumber} to Eva`
       )}
     />
   )

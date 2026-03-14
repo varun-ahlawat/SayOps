@@ -23,6 +23,8 @@ import type {
   OwnerClaimCompletion,
   AdminOrg,
   AdminAgent,
+  ExistingNumberAssignmentRequest,
+  EvaNumberBinding,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -359,26 +361,43 @@ export async function requestAgentNumber(agentId: string): Promise<{ success: bo
 }
 
 /**
- * Bind an existing Vapi number to a specific agent.
+ * Bind an existing number to a specific agent.
  *
  * How to use:
- * 1) Provision/connect number in Vapi first.
- * 2) Call this endpoint with phoneNumber + vapiPhoneNumberId (+ optional vapiAssistantId).
+ * 1) Either provide a Vapi phone number ID or Twilio credentials for a number already owned in Twilio.
+ * 2) Backend imports/assigns the number in Vapi and binds it to the agent.
  * 3) Replace local agent state with returned `agent` to update the dashboard instantly.
  */
 export async function assignExistingNumberToAgent(
   agentId: string,
-  data: {
-    phoneNumber: string
-    vapiPhoneNumberId: string
-    vapiAssistantId?: string
-  }
+  data: ExistingNumberAssignmentRequest
 ): Promise<Agent> {
   const res = await apiFetch<{ agent: Agent }>(`/agents/${agentId}/assign-existing-number`, {
     method: "POST",
     body: JSON.stringify(data),
   })
   return res.agent
+}
+
+export async function provisionEvaNumber(areaCode?: string): Promise<EvaNumberBinding> {
+  const res = await apiFetch<{ binding: EvaNumberBinding }>("/agents/eva/provision-number", {
+    method: "POST",
+    body: JSON.stringify(areaCode ? { areaCode } : {}),
+  })
+  return res.binding
+}
+
+export async function assignExistingEvaNumber(data: ExistingNumberAssignmentRequest): Promise<EvaNumberBinding> {
+  const res = await apiFetch<{ binding: EvaNumberBinding }>("/agents/eva/assign-existing-number", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return res.binding
+}
+
+export async function fetchEvaStatus(): Promise<EvaNumberBinding | null> {
+  const res = await apiFetch<{ binding: EvaNumberBinding | null }>("/agents/eva/status")
+  return res.binding
 }
 
 // ---- Chat / Interaction ----

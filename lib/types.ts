@@ -104,6 +104,31 @@ export interface AgentCreationRequest {
   capabilities_override?: string[]
 }
 
+export type ExistingNumberSource = 'vapi' | 'twilio'
+
+export interface ExistingNumberAssignmentRequest {
+  phoneNumber: string
+  source?: ExistingNumberSource
+  vapiPhoneNumberId?: string
+  vapiAssistantId?: string
+  twilioAccountSid?: string
+  twilioAuthToken?: string
+}
+
+export interface EvaNumberBinding {
+  id: string
+  phone_number: string
+  provider: string
+  organization_id: string | null
+  vapi_phone_number_id: string | null
+  vapi_assistant_id: string | null
+  is_active: boolean
+  metadata: Record<string, unknown> | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type AgentCreationStreamEvent =
   | { type: 'session_created'; session_id: string }
   | { type: 'waiting_for_docs'; session_id: string; pending_document_ids: string[]; elapsed_ms: number; timeout_ms: number }
