@@ -18,6 +18,7 @@ export type ViewId =
   | "token-usage"
   | "admin-orgs"
   | "admin-org-detail"
+  | "platform-health"
 
 export function useViewParams() {
   const searchParams = useSearchParams()

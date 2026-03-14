@@ -783,6 +783,10 @@ export async function adminRejectNumberRequests(orgId: string): Promise<{ succes
   })
 }
 
+export async function fetchPlatformHealth(): Promise<import("@/lib/types").PlatformHealthData> {
+  return apiFetch<import("@/lib/types").PlatformHealthData>('/admin/platform-health')
+}
+
 export async function adminAssignNumber(
   agentId: string,
   data: { phoneNumber: string; vapiPhoneNumberId: string; vapiAssistantId?: string }

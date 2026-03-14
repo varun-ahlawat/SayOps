@@ -308,6 +308,28 @@ export interface LlmTraceDebugSession {
   traces: LlmTraceDebugRecord[]
 }
 
+// Platform Health (admin dashboard)
+
+export interface PlatformMetric {
+  key: string
+  value: number | null
+  text: string | null
+  unit: string
+  error: string | null
+}
+
+export interface PlatformServiceHealth {
+  service: string
+  last_fetched_at: string | null
+  has_error: boolean
+  metrics: PlatformMetric[]
+}
+
+export interface PlatformHealthData {
+  services: PlatformServiceHealth[]
+  cache_age_minutes: number | null
+}
+
 export type OnboardingStage =
   | 'stage_1_unclaimed_owner'
   | 'stage_2_claimed_no_integrator'

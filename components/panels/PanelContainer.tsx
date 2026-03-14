@@ -19,6 +19,7 @@ import { SubscriptionPanel } from "./SubscriptionPanel"
 import { TokenUsagePanel } from "./TokenUsagePanel"
 import { AdminOrgsPanel } from "./AdminOrgsPanel"
 import { AdminOrgDetailPanel } from "./AdminOrgDetailPanel"
+import { PlatformHealthPanel } from "./PlatformHealthPanel"
 
 function PanelContainerInner() {
   const { view, agentId, orgId, setView } = useViewParams()
@@ -107,6 +108,9 @@ function PanelContainerInner() {
       </Panel>
       <Panel active={view === "admin-org-detail"} visited={visited.has("admin-org-detail")}>
         <AdminOrgDetailPanel orgId={orgId} />
+      </Panel>
+      <Panel active={view === "platform-health"} visited={visited.has("platform-health")}>
+        <PlatformHealthPanel />
       </Panel>
     </>
   )
