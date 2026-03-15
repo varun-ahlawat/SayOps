@@ -84,7 +84,7 @@ function JsonNode({
 
   const indent = depth * 14
   const summary = previewValue(value)
-  const valueClassName = wrapText ? "whitespace-pre-wrap break-words" : "whitespace-pre"
+  const valueClassName = wrapText ? "whitespace-pre-wrap break-all" : "whitespace-pre"
 
   if (!expandable) {
     return (
@@ -166,7 +166,7 @@ export function JsonTreePanel({
         <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</h2>
       </div>
       <ScrollArea className="h-full">
-        <div className="min-w-max">
+        <div className={cn(wrapText ? "min-w-0 w-full" : "min-w-max")}>
           <JsonNode
             label={null}
             value={value}

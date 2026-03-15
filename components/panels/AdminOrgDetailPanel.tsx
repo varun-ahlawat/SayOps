@@ -720,6 +720,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
 
           {messages.map((message) => {
             const traceable = message.role === "assistant" && message.hasLlmTrace && !!message.traceExecutionId
+            const missingTrace = message.role === "assistant" && !traceable
             const isSelected = traceable && message.id === selectedTraceMessageId
             return (
               <div
@@ -740,6 +741,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
                 className={`rounded-2xl border p-3 transition-colors ${
                   traceable ? "cursor-pointer hover:border-foreground/40" : ""
                 } ${isSelected ? selectedMessageWrapperClass : "border-transparent"}`}
+                title={formatDateTime(message.created_at)}
               >
                 <ChatMessage
                   role={message.role}
@@ -748,12 +750,12 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
                   toolCalls={message.tool_calls ?? undefined}
                 />
                 <div className="flex flex-wrap items-center gap-2 pl-11 pt-2 text-xs text-muted-foreground">
-                  <span>{formatDateTime(message.created_at)}</span>
                   {traceable ? (
                     <Badge variant={isSelected ? "default" : "outline"}>
                       Inspectable
                     </Badge>
                   ) : null}
+                  {missingTrace ? <Badge variant="secondary">No raw trace captured</Badge> : null}
                 </div>
               </div>
             )
@@ -792,7 +794,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
           refreshDisabled={!selectedTraceExecutionId}
           className="flex-1"
           emptyTitle="No raw trace loaded"
-          emptyDescription="Choose an inspectable assistant message from the transcript to view the exact model payloads."
+          emptyDescription="Choose an inspectable assistant message from the transcript to view the exact model payloads. Older turns without persisted provider traces will show as unavailable."
         />
       </div>
     </div>
