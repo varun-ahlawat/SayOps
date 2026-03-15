@@ -169,6 +169,21 @@ export interface Conversation {
   updated_at: string
 }
 
+export interface CallRecord {
+  id: string
+  agent_id: string
+  agent_name?: string | null
+  channel: Conversation['channel']
+  status: Conversation['status']
+  timestamp: string
+  last_message_at: string | null
+  duration_seconds: number
+  has_recording: boolean
+  has_transcript: boolean
+  summary: string
+  caller_phone: string
+}
+
 export interface MessagePart {
   type: 'text' | 'image' | 'image_url' | 'file_url'
   text?: string

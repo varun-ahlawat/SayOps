@@ -1,48 +1,27 @@
 "use client"
 
-import * as React from "react"
-import { IconPhone, IconClock, IconHistory } from "@tabler/icons-react"
+import { IconPhone } from "@tabler/icons-react"
 import {
+  SidebarGroup,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { NavSection } from "./NavSection"
-import { useSidebarStore } from "@/stores"
 import { useViewParams } from "@/hooks/useViewParams"
 
 export function NavCallHistory() {
-  const { sections } = useSidebarStore()
-  const { setView } = useViewParams()
-  const searchQuery = sections.callHistory?.searchQuery || ""
+  const { view, setView } = useViewParams()
 
   return (
-    <NavSection
-      id="callHistory"
-      title="Call History"
-      icon={<IconPhone className="size-4" />}
-      showSearch
-      searchPlaceholder="Search calls..."
-      defaultOpen={false}
-      onTitleClick={() => setView("history")}
-      headerAction={
-        <button
-          onClick={() => setView("history")}
-          className="text-muted-foreground hover:text-foreground"
-          title="View All"
-        >
-          <IconHistory className="size-4" />
-        </button>
-      }
-    >
+    <SidebarGroup>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton onClick={() => setView("history")}>
-            <IconClock className="size-4" />
-            <span>Recent Calls</span>
+          <SidebarMenuButton isActive={view === "calls"} onClick={() => setView("calls")}>
+            <IconPhone className="size-4" />
+            <span>Calls</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
-    </NavSection>
+    </SidebarGroup>
   )
 }

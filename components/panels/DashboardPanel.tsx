@@ -16,7 +16,7 @@ import { IconRobot, IconPlus } from "@tabler/icons-react"
 import { fetchAgents, fetchCalls, fetchStats, updateCurrentUserPhone } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { useViewParams } from "@/hooks/useViewParams"
-import type { Agent, DashboardStats } from "@/lib/types"
+import type { Agent, CallRecord, DashboardStats } from "@/lib/types"
 
 export function DashboardPanel() {
   const router = useRouter()
@@ -28,7 +28,7 @@ export function DashboardPanel() {
   const searchSnapshot = searchParams.toString()
 
   const [agents, setAgents] = useState<Agent[]>([])
-  const [calls, setCalls] = useState<any[]>([])
+  const [calls, setCalls] = useState<CallRecord[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -49,7 +49,7 @@ export function DashboardPanel() {
 
         if (agentsData.length > 0) {
           const allCallsByAgent = await Promise.all(
-            agentsData.map((a) => fetchCalls(a.id))
+            agentsData.map((a) => fetchCalls(a.id, a.name))
           )
           const flattened = allCallsByAgent
             .flat()
@@ -162,7 +162,13 @@ export function DashboardPanel() {
 
       {stats && <SectionCards stats={stats} agents={agents} />}
       {stats && <ChartAreaInteractive data={stats.messages_per_day ?? []} agents={agents} />}
-      <CallHistoryTable calls={calls.slice(0, 5)} />
+      <CallHistoryTable
+        calls={calls.slice(0, 5)}
+        title="Recent Calls"
+        description="Latest phone calls and web chats across your agents."
+        emptyStateText="No recent calls yet."
+        defaultDatePreset="last7"
+      />
     </div>
   )
 }

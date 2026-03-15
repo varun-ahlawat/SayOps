@@ -1,15 +1,18 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import {
   IconChevronDown,
   IconChevronRight,
+  IconMessage,
   IconPhone,
-  IconUser,
   IconRobot,
+  IconUser,
 } from "@tabler/icons-react"
 import { format } from "date-fns"
 
+import { fetchMessages, fetchRecordingUrl } from "@/lib/api-client"
+import type { CallRecord, Message } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Table,
   TableBody,
@@ -28,22 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { fetchMessages, fetchRecordingUrl } from "@/lib/api-client"
-import { Message } from "@/lib/types"
-
 type DatePreset = "today" | "yesterday" | "last7" | "last30"
-
-type CallHistoryEntryWithTurns = {
-  id: string
-  timestamp: string
-  caller_phone: string
-  duration_seconds?: number
-  channel?: string
-  has_recording?: boolean
-  has_transcript?: boolean
-  summary: string | { summary?: string } | null
-}
 
 function messageToText(content: Message["content"]): string {
   if (typeof content === "string") return content
@@ -65,12 +54,18 @@ function formatDuration(seconds?: number): string {
 }
 
 function dayKey(date: Date): string {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().slice(0, 10)
+  const nextDate = new Date(date)
+  nextDate.setHours(0, 0, 0, 0)
+  return nextDate.toISOString().slice(0, 10)
 }
 
-function CallRow({ call }: { call: any }) {
+function CallRow({
+  call,
+  showAgent,
+}: {
+  call: CallRecord
+  showAgent: boolean
+}) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([])
   const [recordingUrl, setRecordingUrl] = React.useState<string | null>(null)
@@ -81,19 +76,20 @@ function CallRow({ call }: { call: any }) {
     if (!isOpen && messages.length === 0) {
       setLoading(true)
       try {
-        const [msgs, url] = await Promise.all([
+        const [nextMessages, nextRecordingUrl] = await Promise.all([
           fetchMessages(call.id),
           call.channel === "voice" ? fetchRecordingUrl(call.id).catch(() => null) : Promise.resolve(null),
         ])
-        setMessages(msgs)
-        setRecordingUrl(url)
+        setMessages(nextMessages)
+        setRecordingUrl(nextRecordingUrl)
       } catch (err) {
         console.error("Failed to fetch call details:", err)
       } finally {
         setLoading(false)
       }
     }
-    setIsOpen(!isOpen)
+
+    setIsOpen((current) => !current)
   }
 
   return (
@@ -106,38 +102,39 @@ function CallRow({ call }: { call: any }) {
         </TableCell>
         <TableCell className="font-medium">
           <div className="flex items-center gap-2">
-            <IconPhone className="size-4 text-muted-foreground" />
+            {call.channel === "web" ? (
+              <IconMessage className="size-4 text-muted-foreground" />
+            ) : (
+              <IconPhone className="size-4 text-muted-foreground" />
+            )}
             {format(timestamp, "MMM d, yyyy")}
           </div>
         </TableCell>
         <TableCell className="text-muted-foreground">{format(timestamp, "h:mm a")}</TableCell>
-        <TableCell className="text-sm font-medium">
-          {formatDuration(call.duration_seconds)}
-        </TableCell>
+        {showAgent && (
+          <TableCell className="max-w-[180px] truncate text-muted-foreground">
+            {call.agent_name || "Agent"}
+          </TableCell>
+        )}
+        <TableCell className="text-sm font-medium">{formatDuration(call.duration_seconds)}</TableCell>
         <TableCell>
           <Badge variant="outline" className="w-fit">{call.caller_phone || "Web User"}</Badge>
         </TableCell>
-        <TableCell className="max-w-[300px] truncate text-muted-foreground">
-          {typeof call.summary === "object" && call.summary !== null
-            ? (call.summary.summary || JSON.stringify(call.summary))
-            : call.summary}
+        <TableCell className="max-w-[320px] truncate text-muted-foreground">
+          {call.summary}
         </TableCell>
       </TableRow>
 
       {isOpen && (
         <TableRow className="bg-muted/30 hover:bg-muted/30">
-          <TableCell colSpan={6} className="p-0">
-            <div className="px-6 py-6 space-y-6">
+          <TableCell colSpan={showAgent ? 7 : 6} className="p-0">
+            <div className="space-y-6 px-6 py-6">
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Analysis</h4>
-                <div className="bg-background rounded-xl p-4 border shadow-sm">
-                  <p className="text-sm leading-relaxed">
-                    {typeof call.summary === "object" && call.summary !== null
-                      ? (call.summary.summary || JSON.stringify(call.summary))
-                      : call.summary}
-                  </p>
+                <div className="rounded-xl border bg-background p-4 shadow-sm">
+                  <p className="text-sm leading-relaxed">{call.summary}</p>
                   {recordingUrl && (
-                    <div className="mt-4 pt-4 border-t flex items-center gap-4">
+                    <div className="mt-4 flex items-center gap-4 border-t pt-4">
                       <span className="text-xs font-medium text-muted-foreground">Call Recording:</span>
                       <audio controls src={recordingUrl} className="h-8 w-full max-w-md" />
                     </div>
@@ -147,9 +144,9 @@ function CallRow({ call }: { call: any }) {
 
               <div className="flex flex-col gap-4">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Transcript</h4>
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2">
+                <div className="flex max-h-[400px] flex-col gap-3 overflow-y-auto pr-2">
                   {loading ? (
-                    <p className="text-sm text-muted-foreground animate-pulse">Loading transcript...</p>
+                    <p className="animate-pulse text-sm text-muted-foreground">Loading transcript...</p>
                   ) : messages.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No transcript available.</p>
                   ) : (
@@ -191,37 +188,59 @@ function CallRow({ call }: { call: any }) {
   )
 }
 
-export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[] }) {
+export function CallHistoryTable({
+  calls,
+  title = "History",
+  description = "Completed and archived calls and web chats handled by your agents.",
+  emptyStateText = "No history for this filter yet.",
+  defaultDatePreset = "last7",
+  showAgent = true,
+}: {
+  calls: CallRecord[]
+  title?: string
+  description?: string
+  emptyStateText?: string
+  defaultDatePreset?: DatePreset
+  showAgent?: boolean
+}) {
   const [viewFilter, setViewFilter] = React.useState<"all" | "voice" | "web">("all")
-  const [datePreset, setDatePreset] = React.useState<DatePreset>("today")
+  const [datePreset, setDatePreset] = React.useState<DatePreset>(defaultDatePreset)
+
+  React.useEffect(() => {
+    setDatePreset(defaultDatePreset)
+  }, [defaultDatePreset])
 
   const dateFilteredCalls = React.useMemo(() => {
     const now = new Date()
-    const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
+    const startOfDay = (date: Date) => {
+      const nextDate = new Date(date)
+      nextDate.setHours(0, 0, 0, 0)
+      return nextDate
+    }
     const today = startOfDay(now)
     const yesterday = startOfDay(new Date(now.getTime() - 86400_000))
 
-    return calls.filter((c) => {
-      const t = new Date(c.timestamp)
-      if (datePreset === "today") return dayKey(t) === dayKey(today)
-      if (datePreset === "yesterday") return dayKey(t) === dayKey(yesterday)
-      if (datePreset === "last7") return t >= new Date(now.getTime() - 7 * 86400_000)
-      if (datePreset === "last30") return t >= new Date(now.getTime() - 30 * 86400_000)
+    return calls.filter((call) => {
+      const timestamp = new Date(call.timestamp)
+      if (datePreset === "today") return dayKey(timestamp) === dayKey(today)
+      if (datePreset === "yesterday") return dayKey(timestamp) === dayKey(yesterday)
+      if (datePreset === "last7") return timestamp >= new Date(now.getTime() - 7 * 86400_000)
+      if (datePreset === "last30") return timestamp >= new Date(now.getTime() - 30 * 86400_000)
       return true
     })
   }, [calls, datePreset])
 
   const filteredCalls = React.useMemo(() => {
     if (viewFilter === "all") return dateFilteredCalls
-    if (viewFilter === "voice") return dateFilteredCalls.filter((c) => c.channel === "voice")
-    return dateFilteredCalls.filter((c) => c.channel === "web")
+    if (viewFilter === "voice") return dateFilteredCalls.filter((call) => call.channel === "voice")
+    return dateFilteredCalls.filter((call) => call.channel === "web")
   }, [dateFilteredCalls, viewFilter])
 
   const counts = React.useMemo(() => {
-    const voice = dateFilteredCalls.filter((c) => c.channel === "voice").length
-    const web = dateFilteredCalls.filter((c) => c.channel === "web").length
-    const recordings = dateFilteredCalls.filter((c) => c.channel === "voice" && c.has_recording).length
-    const transcripts = dateFilteredCalls.filter((c) => c.has_transcript).length
+    const voice = dateFilteredCalls.filter((call) => call.channel === "voice").length
+    const web = dateFilteredCalls.filter((call) => call.channel === "web").length
+    const recordings = dateFilteredCalls.filter((call) => call.channel === "voice" && call.has_recording).length
+    const transcripts = dateFilteredCalls.filter((call) => call.has_transcript).length
     return { all: dateFilteredCalls.length, voice, web, recordings, transcripts }
   }, [dateFilteredCalls])
 
@@ -235,24 +254,22 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Call History</CardTitle>
-        <CardDescription>Recent calls and web chats handled by your agents</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
 
-        {/* Date presets */}
         <div className="flex flex-wrap gap-2 pt-2">
-          {presets.map((p) => (
+          {presets.map((preset) => (
             <Button
-              key={p.key}
-              variant={datePreset === p.key ? "default" : "outline"}
+              key={preset.key}
+              variant={datePreset === preset.key ? "default" : "outline"}
               size="sm"
-              onClick={() => setDatePreset(p.key)}
+              onClick={() => setDatePreset(preset.key)}
             >
-              {p.label}
+              {preset.label}
             </Button>
           ))}
         </div>
 
-        {/* Stats */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground">
           <span><span className="font-medium text-foreground">{counts.all}</span> total</span>
           <span><span className="font-medium text-foreground">{counts.voice}</span> calls</span>
@@ -261,7 +278,6 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
           <span><span className="font-medium text-foreground">{counts.transcripts}</span> transcripts</span>
         </div>
 
-        {/* Channel filter */}
         <div className="flex flex-wrap gap-2 pt-2">
           <Button variant={viewFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("all")}>
             All ({counts.all})
@@ -277,7 +293,7 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
 
       <CardContent>
         {filteredCalls.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">No history for this filter yet.</p>
+          <p className="py-8 text-center text-muted-foreground">{emptyStateText}</p>
         ) : (
           <div className="overflow-x-auto">
             <ScrollArea className="w-full">
@@ -287,6 +303,7 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
                     <TableHead className="w-10" />
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
+                    {showAgent && <TableHead>Agent</TableHead>}
                     <TableHead>Duration</TableHead>
                     <TableHead>Caller</TableHead>
                     <TableHead>Summary</TableHead>
@@ -294,7 +311,7 @@ export function CallHistoryTable({ calls }: { calls: CallHistoryEntryWithTurns[]
                 </TableHeader>
                 <TableBody>
                   {filteredCalls.map((call) => (
-                    <CallRow key={call.id} call={call} />
+                    <CallRow key={call.id} call={call} showAgent={showAgent} />
                   ))}
                 </TableBody>
               </Table>

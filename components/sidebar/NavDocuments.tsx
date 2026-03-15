@@ -15,34 +15,60 @@ import {
 } from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore } from "@/stores"
+import { useSidebarPaginatedData } from "@/hooks/useSidebarPaginatedData"
 import { useViewParams } from "@/hooks/useViewParams"
+import type { UserDocument } from "@/lib/types"
 import { useDocumentsStore } from "@/stores/documentsStore"
 import { useAuth } from "@/lib/auth-context"
-import { deleteDocument } from "@/lib/api-client"
+import { deleteDocument, fetchDocumentsPage } from "@/lib/api-client"
 import { toast } from "sonner"
-
-const PAGE_SIZE = 6
 
 export function NavDocuments() {
   const { user } = useAuth()
   const { sections } = useSidebarStore()
-  const { setView } = useViewParams()
-  const { documents, fetchDocuments, removeDocument } = useDocumentsStore()
+  const { view, setView } = useViewParams()
+  const { removeDocument } = useDocumentsStore()
   const searchQuery = sections.documents?.searchQuery || ""
+  const isSectionOpen = sections.documents?.isOpen ?? true
 
-  const [showAll, setShowAll] = React.useState(false)
+  const fetchPage = React.useCallback(async ({
+    limit,
+    offset,
+    searchQuery: nextSearchQuery,
+  }: {
+    limit: number
+    offset: number
+    searchQuery: string
+  }) => {
+    if (!user) {
+      return { items: [], hasMore: false }
+    }
 
-  React.useEffect(() => {
-    if (!user) return
-    fetchDocuments()
-  }, [user, fetchDocuments])
+    const result = await fetchDocumentsPage({
+      limit,
+      offset,
+      search: nextSearchQuery,
+    })
 
-  const filtered = searchQuery
-    ? documents.filter(d => d.file_name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : documents
+    return {
+      items: result.uploads,
+      hasMore: result.hasMore,
+    }
+  }, [user])
 
-  const visible = showAll ? filtered : filtered.slice(0, PAGE_SIZE)
-  const hasMore = filtered.length > PAGE_SIZE
+  const {
+    items: documents,
+    hasMore,
+    loading,
+    error,
+    loadMore,
+    reload,
+    setItems,
+  } = useSidebarPaginatedData<UserDocument>({
+    isOpen: isSectionOpen,
+    searchQuery,
+    fetchPage,
+  })
 
   const handleDeleteDocument = async (docId: string, fileName: string) => {
     const confirmed = window.confirm(`Delete "${fileName}"? This action cannot be undone.`)
@@ -51,6 +77,7 @@ export function NavDocuments() {
     try {
       await deleteDocument(docId)
       removeDocument(docId)
+      setItems((current) => current.filter((document) => document.id !== docId))
       toast.success("Document deleted")
     } catch (err) {
       toast.error((err as Error).message || "Failed to delete document")
@@ -64,6 +91,7 @@ export function NavDocuments() {
       icon={<IconFileUpload className="size-4" />}
       showSearch
       searchPlaceholder="Search documents..."
+      isActive={view === "documents"}
       onTitleClick={() => setView("documents")}
       headerAction={
         <button
@@ -76,16 +104,19 @@ export function NavDocuments() {
       }
     >
       <SidebarMenu>
-        {visible.length === 0 ? (
+        {loading && documents.length === 0 ? (
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => setView("documents")} className="text-muted-foreground text-xs">
-              <IconFile className="size-4" />
-              <span>No documents yet</span>
+            <span className="px-2 text-xs text-muted-foreground">Loading...</span>
+          </SidebarMenuItem>
+        ) : error && documents.length === 0 ? (
+          <SidebarMenuItem>
+            <SidebarMenuButton size="sm" onClick={() => void reload()} className="text-xs text-red-500">
+              <span>Failed to load. Tap to retry.</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ) : (
           <>
-            {visible.map((doc) => (
+            {documents.map((doc) => (
               <SidebarMenuItem key={doc.id}>
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
@@ -105,14 +136,23 @@ export function NavDocuments() {
                 </ContextMenu>
               </SidebarMenuItem>
             ))}
-            {hasMore && !showAll && (
+            {!loading && documents.length === 0 && (
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={() => setView("documents")} className="text-muted-foreground text-xs">
+                  <IconFile className="size-4" />
+                  <span>{searchQuery ? "No documents found" : "No documents yet"}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {hasMore && (
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => setShowAll(true)}
+                  size="sm"
+                  onClick={() => void loadMore()}
                   className="text-muted-foreground text-xs"
                 >
                   <IconChevronDown className="size-4" />
-                  <span>Show {filtered.length - PAGE_SIZE} more</span>
+                  <span>{loading ? "Loading more..." : "Show more"}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}

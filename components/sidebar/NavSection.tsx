@@ -13,6 +13,7 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebarStore } from "@/stores"
 import { cn } from "@/lib/utils"
 
@@ -25,6 +26,7 @@ export interface NavSectionProps {
   defaultOpen?: boolean
   headerAction?: React.ReactNode
   onTitleClick?: () => void
+  isActive?: boolean
   children: React.ReactNode
   className?: string
 }
@@ -38,6 +40,7 @@ export function NavSection({
   defaultOpen = true,
   headerAction,
   onTitleClick,
+  isActive = false,
   children,
   className,
 }: NavSectionProps) {
@@ -90,18 +93,27 @@ export function NavSection({
       <SidebarGroup className={className}>
         <SidebarGroupLabel asChild>
           <div className="flex items-center w-full gap-2">
+            {/* Active sections stay visually tied to the current panel. */}
             {/* Title area — navigates if onTitleClick provided, otherwise toggles collapse */}
             {onTitleClick ? (
               <button
                 onClick={onTitleClick}
-                className="flex items-center gap-2 flex-1 text-left min-w-0"
+                className={cn(
+                  "flex items-center gap-2 flex-1 min-w-0 rounded-md px-2 py-1.5 text-left transition-colors",
+                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                )}
               >
                 {icon && <span className="shrink-0">{icon}</span>}
                 <span className="truncate">{title}</span>
               </button>
             ) : (
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 flex-1 text-left min-w-0">
+                <button
+                  className={cn(
+                    "flex items-center gap-2 flex-1 min-w-0 rounded-md px-2 py-1.5 text-left transition-colors",
+                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  )}
+                >
                   {icon && <span className="shrink-0">{icon}</span>}
                   <span className="truncate">{title}</span>
                 </button>
@@ -162,7 +174,11 @@ export function NavSection({
               </div>
             </div>
           )}
-          <SidebarGroupContent className="pl-2 ml-2 border-l border-sidebar-border">{children}</SidebarGroupContent>
+          <ScrollArea className="max-h-[18rem]">
+            <SidebarGroupContent className="ml-2 border-l border-sidebar-border pl-2 pr-1">
+              {children}
+            </SidebarGroupContent>
+          </ScrollArea>
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>

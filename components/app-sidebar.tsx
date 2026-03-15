@@ -47,17 +47,11 @@ function SpeakOpsWaveMark() {
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user, isPlatformAdmin } = useAuth()
-  const { agents, fetchAgents } = useAgentsStore()
+  const { agents } = useAgentsStore()
   const { view, setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
-
-  React.useEffect(() => {
-    if (user) {
-      fetchAgents()
-    }
-  }, [user, fetchAgents])
 
   React.useEffect(() => {
     if (!user) return
@@ -170,6 +164,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <div className="flex items-center justify-between">
                     <SidebarMenuButton
+                      isActive={view === "dashboard"}
                       onClick={() => setView("dashboard")}
                       className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
                     >
@@ -200,14 +195,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
 
             <SidebarContent className="overflow-y-auto">
-              <NavAgents agents={agents} />
+              <NavAgents />
               <NavChatHistory />
               <NavCallHistory />
               <NavDocuments />
               <div className="mt-auto">
                 <SidebarMenu className="px-2 pb-1">
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => setView("token-usage")} className="gap-2">
+                    <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
                       <IconCoin className="size-4 text-amber-500" />
                       <span>Token Usage</span>
                       {usageStats && (
@@ -219,7 +214,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => setView("payments")} className="gap-2">
+                    <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
                       <IconCreditCard className="size-4 text-violet-500" />
                       <span>Payments</span>
                     </SidebarMenuButton>
@@ -227,13 +222,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   {isPlatformAdmin && (
                     <>
                       <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => setView("admin-orgs")} className="gap-2">
+                        <SidebarMenuButton isActive={view === "admin-orgs" || view === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
                           <IconBuilding className="size-4 text-sky-500" />
                           <span>Organizations</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => setView("platform-health")} className="gap-2">
+                        <SidebarMenuButton isActive={view === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
                           <IconHeartbeat className="size-4 text-emerald-500" />
                           <span>Platform Health</span>
                         </SidebarMenuButton>

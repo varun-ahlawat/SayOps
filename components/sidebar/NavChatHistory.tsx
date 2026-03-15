@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconMessage, IconPlus } from "@tabler/icons-react"
+import { IconChevronDown, IconMessage, IconPlus } from "@tabler/icons-react"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -15,10 +15,12 @@ import {
 } from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore, useConversationsStore } from "@/stores"
+import { useSidebarPaginatedData } from "@/hooks/useSidebarPaginatedData"
 import { useAuth } from "@/lib/auth-context"
+import type { Conversation } from "@/lib/types"
 import { getChatSummary } from "@/lib/utils"
 import { useEvaChatStore } from "@/stores/evaChatStore"
-import { deleteConversation } from "@/lib/api-client"
+import { deleteConversation, fetchEvaConversationsPage } from "@/lib/api-client"
 import { toast } from "sonner"
 
 function formatRelativeDate(dateStr: string): string {
@@ -36,23 +38,49 @@ function formatRelativeDate(dateStr: string): string {
 export function NavChatHistory() {
   const { user } = useAuth()
   const { sections } = useSidebarStore()
-  const { evaConversations, fetchEvaConversations, invalidateAndRefetch, loading, error } = useConversationsStore()
+  const { invalidateAndRefetch } = useConversationsStore()
+  const { conversationId, isOpen: isChatOpen } = useEvaChatStore()
   const searchQuery = sections.evaChat?.searchQuery || ""
+  const isSectionOpen = sections.evaChat?.isOpen ?? true
 
-  React.useEffect(() => {
-    if (user) {
-      fetchEvaConversations()
+  const fetchPage = React.useCallback(async ({
+    limit,
+    offset,
+    searchQuery: nextSearchQuery,
+  }: {
+    limit: number
+    offset: number
+    searchQuery: string
+  }) => {
+    if (!user) {
+      return { items: [], hasMore: false }
     }
-  }, [user, fetchEvaConversations])
 
-  const filteredConversations = React.useMemo(() => {
-    if (!searchQuery) return evaConversations
-    return evaConversations.filter((c) =>
-      getChatSummary(c.metadata, "Eva Chat").toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [evaConversations, searchQuery])
+    const result = await fetchEvaConversationsPage({
+      limit,
+      offset,
+      search: nextSearchQuery,
+    })
 
-  const displayConversations = filteredConversations.slice(0, 5)
+    return {
+      items: result.conversations,
+      hasMore: result.hasMore,
+    }
+  }, [user])
+
+  const {
+    items: conversations,
+    hasMore,
+    loading,
+    error,
+    loadMore,
+    reload,
+    setItems,
+  } = useSidebarPaginatedData<Conversation>({
+    isOpen: isSectionOpen,
+    searchQuery,
+    fetchPage,
+  })
 
   const handleOpenChat = (chatId: string) => {
     const store = useEvaChatStore.getState()
@@ -79,6 +107,7 @@ export function NavChatHistory() {
       }
 
       await invalidateAndRefetch()
+      setItems((current) => current.filter((conversation) => conversation.id !== chatId))
       toast.success("Chat deleted")
     } catch (err) {
       toast.error((err as Error).message || "Failed to delete chat")
@@ -92,6 +121,7 @@ export function NavChatHistory() {
       icon={<IconMessage className="size-4" />}
       showSearch
       searchPlaceholder="Search chats..."
+      isActive={isChatOpen}
       headerAction={
         <button
           onClick={handleNewChat}
@@ -103,25 +133,25 @@ export function NavChatHistory() {
       }
     >
       <SidebarMenu>
-        {loading ? (
+        {loading && conversations.length === 0 ? (
           <SidebarMenuItem>
             <span className="text-xs text-muted-foreground px-2">Loading...</span>
           </SidebarMenuItem>
-        ) : error ? (
+        ) : error && conversations.length === 0 ? (
           <SidebarMenuItem>
-            <button
-              onClick={() => fetchEvaConversations()}
-              className="text-xs text-red-500 px-2 hover:underline cursor-pointer"
-            >
-              Failed to load. Tap to retry.
-            </button>
+            <SidebarMenuButton size="sm" onClick={() => void reload()} className="text-xs text-red-500">
+              <span>Failed to load. Tap to retry.</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
-        ) : displayConversations.length > 0 ? (
-          displayConversations.map((chat) => (
+        ) : conversations.length > 0 ? (
+          conversations.map((chat) => (
             <SidebarMenuItem key={chat.id}>
               <ContextMenu>
                 <ContextMenuTrigger asChild>
-                  <SidebarMenuButton onClick={() => handleOpenChat(chat.id)}>
+                  <SidebarMenuButton
+                    isActive={isChatOpen && conversationId === chat.id}
+                    onClick={() => handleOpenChat(chat.id)}
+                  >
                     <IconMessage className="size-4 text-muted-foreground" />
                     <span className="truncate flex-1">
                       {getChatSummary(chat.metadata, "Eva Chat")}
@@ -144,7 +174,17 @@ export function NavChatHistory() {
           ))
         ) : (
           <SidebarMenuItem>
-            <span className="text-xs text-muted-foreground px-2">No chats yet</span>
+            <span className="text-xs text-muted-foreground px-2">
+              {searchQuery ? "No chats found" : "No chats yet"}
+            </span>
+          </SidebarMenuItem>
+        )}
+        {hasMore && (
+          <SidebarMenuItem>
+            <SidebarMenuButton size="sm" onClick={() => void loadMore()} className="text-xs text-muted-foreground">
+              <IconChevronDown className="size-4" />
+              <span>{loading ? "Loading more..." : "Show more"}</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         )}
       </SidebarMenu>

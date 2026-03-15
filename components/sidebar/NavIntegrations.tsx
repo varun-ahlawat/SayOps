@@ -24,7 +24,7 @@ const KNOWN_INTEGRATIONS = [
 
 export function NavIntegrations() {
   const { user } = useAuth()
-  const { setView } = useViewParams()
+  const { view, setView } = useViewParams()
   const [connected, setConnected] = React.useState<Record<string, IntegrationStatus>>({})
   const [loaded, setLoaded] = React.useState(false)
 
@@ -59,6 +59,7 @@ export function NavIntegrations() {
       title="Integrations"
       icon={<IconPlug className="size-4" />}
       defaultOpen={false}
+      isActive={view === "integrations"}
       onTitleClick={() => setView("integrations")}
       headerAction={
         <button
@@ -73,7 +74,7 @@ export function NavIntegrations() {
       <SidebarMenu>
         {KNOWN_INTEGRATIONS.map((integration) => (
           <SidebarMenuItem key={integration.provider}>
-            <SidebarMenuButton onClick={() => setView("integrations")}>
+            <SidebarMenuButton isActive={view === "integrations"} onClick={() => setView("integrations")}>
               {getStatusDot(integration.provider)}
               <span className="truncate">{integration.label}</span>
             </SidebarMenuButton>

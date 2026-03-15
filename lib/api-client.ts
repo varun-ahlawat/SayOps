@@ -4,6 +4,7 @@ import type {
   Agent,
   AgentCreationRequest,
   AgentCreationStreamEvent,
+  CallRecord,
   Conversation,
   Message,
   DashboardStats,
@@ -56,6 +57,17 @@ interface ChatStreamEvent {
 export interface AgentCreationStreamCallbacks {
   onEvent?: (event: AgentCreationStreamEvent) => void
   onDone?: (agent: Agent, sessionId: string) => void
+}
+
+interface PaginationOptions {
+  limit?: number
+  offset?: number
+  search?: string
+}
+
+interface ConversationPageOptions extends PaginationOptions {
+  agentId?: string
+  scope?: 'me'
 }
 
 function buildApiUrl(endpoint: string): string {
@@ -550,8 +562,82 @@ export async function uploadFiles(
   })
 }
 
+function normalizeConversations(conversations: Conversation[]): Conversation[] {
+  return conversations.map((conversation) => {
+    if (conversation.metadata?.summary && typeof conversation.metadata.summary === 'object') {
+      return {
+        ...conversation,
+        metadata: {
+          ...conversation.metadata,
+          ...(conversation.metadata.summary as any),
+          summary: (conversation.metadata.summary as any).summary,
+        },
+      }
+    }
+
+    return conversation
+  })
+}
+
+function buildQueryString(params: Record<string, string | number | undefined | null>): string {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return
+    query.set(key, String(value))
+  })
+  const queryString = query.toString()
+  return queryString ? `?${queryString}` : ""
+}
+
+export function mapConversationToCallRecord(conversation: Conversation, agentName?: string | null): CallRecord {
+  const summary =
+    typeof conversation.metadata?.summary === 'string'
+      ? conversation.metadata.summary
+      : conversation.metadata?.summary && typeof conversation.metadata.summary === 'object'
+        ? (conversation.metadata.summary as any).summary
+        : "Conversation"
+
+  return {
+    id: conversation.id,
+    agent_id: conversation.agent_id,
+    agent_name: agentName ?? null,
+    channel: conversation.channel,
+    status: conversation.status,
+    timestamp: conversation.started_at,
+    last_message_at: conversation.last_message_at,
+    duration_seconds: conversation.channel === 'voice' ? (Number(conversation.metadata?.vapi_duration_seconds ?? 0) || 0) : 0,
+    has_recording: Boolean(
+      (typeof conversation.metadata?.vapi_recording_url === 'string' && conversation.metadata.vapi_recording_url.trim().length > 0) ||
+      (typeof conversation.metadata?.recordingUrl === 'string' && conversation.metadata.recordingUrl.trim().length > 0)
+    ),
+    has_transcript: Boolean(
+      (Array.isArray(conversation.metadata?.vapi_transcript) && conversation.metadata.vapi_transcript.length > 0) ||
+      (typeof conversation.metadata?.vapi_transcript === 'string' && conversation.metadata.vapi_transcript.trim().length > 0)
+    ),
+    summary,
+    caller_phone:
+      (typeof conversation.metadata?.vapi_caller_phone === 'string' && conversation.metadata.vapi_caller_phone.trim()) ||
+      (typeof conversation.metadata?.vapi_customer_external_id === 'string' && conversation.metadata.vapi_customer_external_id.trim()) ||
+      conversation.customer_id ||
+      (conversation.channel === 'web' ? "Web User" : "Unknown Caller"),
+  }
+}
+
+export async function fetchDocumentsPage(options: PaginationOptions = {}): Promise<{ uploads: UserDocument[]; hasMore: boolean }> {
+  const query = buildQueryString({
+    limit: options.limit,
+    offset: options.offset,
+    search: options.search?.trim() || undefined,
+  })
+  const res = await apiFetch<{ uploads: UserDocument[]; hasMore?: boolean }>(`/upload/list/all${query}`)
+  return {
+    uploads: res.uploads || [],
+    hasMore: Boolean(res.hasMore),
+  }
+}
+
 export async function fetchDocuments(): Promise<UserDocument[]> {
-  const res = await apiFetch<{ uploads: UserDocument[] }>("/upload/list/all")
+  const res = await fetchDocumentsPage()
   return res.uploads
 }
 
@@ -581,51 +667,38 @@ export async function fetchOrgMembers(): Promise<OrgMember[]> {
 
 // ---- Conversations & Messages ----
 
+export async function fetchConversationsPage(options: ConversationPageOptions = {}): Promise<{ conversations: Conversation[]; hasMore: boolean }> {
+  const query = buildQueryString({
+    agentId: options.agentId,
+    scope: options.scope,
+    limit: options.limit,
+    offset: options.offset,
+    search: options.search?.trim() || undefined,
+  })
+  const res = await apiFetch<{ conversations: Conversation[]; hasMore?: boolean }>(`/conversations${query}`)
+  return {
+    conversations: normalizeConversations(res.conversations ?? []),
+    hasMore: Boolean(res.hasMore),
+  }
+}
+
 export async function fetchConversations(agentId?: string, scope?: 'me'): Promise<Conversation[]> {
-  const params = new URLSearchParams()
-  if (agentId) params.append('agentId', agentId)
-  if (scope) params.append('scope', scope)
-  
-  const queryString = params.toString()
-  const endpoint = queryString ? `/conversations?${queryString}` : "/conversations"
-  
-  const res = await apiFetch<{ conversations: Conversation[] }>(endpoint)
-  
-  // Flatten nested metadata.summary objects from old corrupted data
-  const conversations = res.conversations ?? []
-  return conversations.map(c => {
-    if (c.metadata?.summary && typeof c.metadata.summary === 'object') {
-      return {
-        ...c,
-        metadata: {
-          ...c.metadata,
-          ...(c.metadata.summary as any),
-          summary: (c.metadata.summary as any).summary
-        }
-      }
-    }
-    return c
+  const res = await fetchConversationsPage({ agentId, scope })
+  return res.conversations
+}
+
+export async function fetchEvaConversationsPage(options: PaginationOptions = {}): Promise<{ conversations: Conversation[]; hasMore: boolean }> {
+  return fetchConversationsPage({
+    agentId: "super",
+    limit: options.limit,
+    offset: options.offset,
+    search: options.search,
   })
 }
 
 export async function fetchEvaConversations(): Promise<Conversation[]> {
-  const res = await apiFetch<{ conversations: Conversation[] }>("/conversations?agentId=super")
-  
-  // Flatten nested metadata.summary objects from old corrupted data
-  const conversations = res.conversations ?? []
-  return conversations.map(c => {
-    if (c.metadata?.summary && typeof c.metadata.summary === 'object') {
-      return {
-        ...c,
-        metadata: {
-          ...c.metadata,
-          ...(c.metadata.summary as any),
-          summary: (c.metadata.summary as any).summary
-        }
-      }
-    }
-    return c
-  })
+  const res = await fetchEvaConversationsPage()
+  return res.conversations
 }
 
 export async function createConversation(agentId: string, mode: 'new' | 'reuse' = 'new'): Promise<Conversation> {
@@ -660,33 +733,24 @@ export async function updateConversationStatus(conversationId: string, status: '
   })
 }
 
-export async function fetchCalls(agentId: string): Promise<any[]> {
+export async function fetchAgentsPage(options: PaginationOptions = {}): Promise<{ agents: Agent[]; hasMore: boolean }> {
+  const query = buildQueryString({
+    limit: options.limit,
+    offset: options.offset,
+    search: options.search?.trim() || undefined,
+  })
+  const res = await apiFetch<{ agents: Agent[]; hasMore?: boolean }>(`/agents${query}`)
+  return {
+    agents: res.agents || [],
+    hasMore: Boolean(res.hasMore),
+  }
+}
+
+export async function fetchCalls(agentId: string, agentName?: string | null): Promise<CallRecord[]> {
   // Map conversations to call history rows for the UI.
   try {
     const convs = await fetchConversations(agentId)
-    return convs
-      .map(c => ({
-      id: c.id,
-      agent_id: c.agent_id,
-      channel: c.channel,
-      timestamp: c.started_at,
-      duration_seconds: c.channel === 'voice' ? (Number(c.metadata?.vapi_duration_seconds ?? 0) || 0) : 0,
-      has_recording: Boolean(
-        (typeof c.metadata?.vapi_recording_url === 'string' && c.metadata.vapi_recording_url.trim().length > 0) ||
-        (typeof c.metadata?.recordingUrl === 'string' && c.metadata.recordingUrl.trim().length > 0)
-      ),
-      has_transcript: Boolean(
-        (Array.isArray(c.metadata?.vapi_transcript) && c.metadata.vapi_transcript.length > 0) ||
-        (typeof c.metadata?.vapi_transcript === 'string' && c.metadata.vapi_transcript.trim().length > 0)
-      ),
-      summary: typeof c.metadata?.summary === 'string' ? c.metadata.summary : 
-               (c.metadata?.summary && typeof c.metadata.summary === 'object' ? (c.metadata.summary as any).summary : "Conversation"),
-      caller_phone:
-        (typeof c.metadata?.vapi_caller_phone === 'string' && c.metadata.vapi_caller_phone.trim()) ||
-        (typeof c.metadata?.vapi_customer_external_id === 'string' && c.metadata.vapi_customer_external_id.trim()) ||
-        c.customer_id ||
-        (c.channel === 'web' ? "Web User" : "Unknown Caller"),
-    }))
+    return convs.map((conversation) => mapConversationToCallRecord(conversation, agentName))
   } catch {
     return []
   }

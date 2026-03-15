@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconRobot, IconPlus } from "@tabler/icons-react"
+import { IconChevronDown, IconRobot, IconPlus } from "@tabler/icons-react"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore, useAgentsStore } from "@/stores"
+import { useSidebarPaginatedData } from "@/hooks/useSidebarPaginatedData"
 import { useViewParams } from "@/hooks/useViewParams"
-import { deleteAgent } from "@/lib/api-client"
+import { deleteAgent, fetchAgentsPage } from "@/lib/api-client"
 import { toast } from "sonner"
 import {
   Tooltip,
@@ -33,18 +34,46 @@ interface Agent {
   status?: "active" | "inactive"
 }
 
-export function NavAgents({ agents }: { agents: Agent[] }) {
+export function NavAgents() {
   const { sections } = useSidebarStore()
-  const { removeAgent } = useAgentsStore()
-  const { setView } = useViewParams()
+  const { agents: allAgents, removeAgent } = useAgentsStore()
+  const { view, agentId, setView } = useViewParams()
   const searchQuery = sections.agents?.searchQuery || ""
+  const isOpen = sections.agents?.isOpen ?? true
 
-  const filteredAgents = React.useMemo(() => {
-    if (!searchQuery) return agents
-    return agents.filter((agent) =>
-      agent.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [agents, searchQuery])
+  const fetchPage = React.useCallback(async ({
+    limit,
+    offset,
+    searchQuery: nextSearchQuery,
+  }: {
+    limit: number
+    offset: number
+    searchQuery: string
+  }) => {
+    const result = await fetchAgentsPage({
+      limit,
+      offset,
+      search: nextSearchQuery,
+    })
+    return {
+      items: result.agents as Agent[],
+      hasMore: result.hasMore,
+    }
+  }, [])
+
+  const {
+    items: agents,
+    hasMore,
+    loading,
+    error,
+    loadMore,
+    reload,
+    setItems,
+  } = useSidebarPaginatedData<Agent>({
+    isOpen,
+    searchQuery,
+    fetchPage,
+  })
 
   const handleDeleteAgent = async (agentId: string, agentName: string) => {
     const confirmed = window.confirm(`Delete "${agentName}"? This action cannot be undone.`)
@@ -53,6 +82,7 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
     try {
       await deleteAgent(agentId)
       removeAgent(agentId)
+      setItems((current) => current.filter((agent) => agent.id !== agentId))
       toast.success("Agent deleted")
     } catch (err) {
       toast.error((err as Error).message || "Failed to delete agent")
@@ -60,11 +90,11 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
   }
 
   const handleAgentsTitleClick = () => {
-    if (agents.length === 0) {
+    if (allAgents.length === 0) {
       setView("create-agent")
       return
     }
-    setView("agent", { agentId: agents[0].id })
+    setView("agent", { agentId: allAgents[0].id })
   }
 
   return (
@@ -74,6 +104,7 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
       icon={<IconRobot className="size-4" />}
       showSearch
       searchPlaceholder="Search agents..."
+      isActive={view === "agent" || view === "create-agent"}
       onTitleClick={handleAgentsTitleClick}
       headerAction={
         <button
@@ -87,13 +118,26 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
     >
       <TooltipProvider delayDuration={400}>
       <SidebarMenu>
-        {filteredAgents.map((agent) => (
+        {loading && agents.length === 0 ? (
+          <SidebarMenuItem>
+            <span className="px-2 text-xs text-muted-foreground">Loading...</span>
+          </SidebarMenuItem>
+        ) : error && agents.length === 0 ? (
+          <SidebarMenuItem>
+            <SidebarMenuButton size="sm" onClick={() => void reload()} className="text-xs text-red-500">
+              <span>Failed to load. Tap to retry.</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ) : agents.map((agent) => (
           <SidebarMenuItem key={agent.id}>
             <ContextMenu>
               <ContextMenuTrigger asChild>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <SidebarMenuButton onClick={() => setView("agent", { agentId: agent.id })}>
+                    <SidebarMenuButton
+                      isActive={view === "agent" && agentId === agent.id}
+                      onClick={() => setView("agent", { agentId: agent.id })}
+                    >
                       <IconRobot className="size-4" />
                       <span className="truncate">{agent.name}</span>
                     </SidebarMenuButton>
@@ -131,11 +175,19 @@ export function NavAgents({ agents }: { agents: Agent[] }) {
             </ContextMenu>
           </SidebarMenuItem>
         ))}
-        {filteredAgents.length === 0 && searchQuery && (
+        {!loading && agents.length === 0 && (
           <SidebarMenuItem>
             <span className="text-xs text-muted-foreground px-2">
-              No agents found
+              {searchQuery ? "No agents found" : "No agents yet"}
             </span>
+          </SidebarMenuItem>
+        )}
+        {hasMore && (
+          <SidebarMenuItem>
+            <SidebarMenuButton size="sm" onClick={() => void loadMore()} className="text-xs text-muted-foreground">
+              <IconChevronDown className="size-4" />
+              <span>{loading ? "Loading more..." : "Show more"}</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         )}
       </SidebarMenu>

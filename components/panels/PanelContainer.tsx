@@ -75,7 +75,7 @@ function PanelContainerInner() {
       <Panel active={view === "documents"} visited={visited.has("documents")}>
         <DocumentsPanel />
       </Panel>
-      <Panel active={view === "history"} visited={visited.has("history")}>
+      <Panel active={view === "calls"} visited={visited.has("calls")}>
         <HistoryPanel />
       </Panel>
       <Panel active={view === "integrations"} visited={visited.has("integrations")}>
