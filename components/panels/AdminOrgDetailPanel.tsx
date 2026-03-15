@@ -6,6 +6,7 @@ import { useViewParams } from "@/hooks/useViewParams"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   adminAssignNumber,
+  adminProvisionNumber,
   fetchAdminConversationMessages,
   fetchAdminExecutionLlmTraces,
   fetchAdminOrgAgents,
@@ -139,6 +140,8 @@ interface AssignNumberFormProps {
 }
 
 function AssignNumberForm({ agentId, agentName, onSuccess, onClose }: AssignNumberFormProps) {
+  const [mode, setMode] = React.useState<"provision" | "existing">("provision")
+  const [areaCode, setAreaCode] = React.useState("")
   const [phoneNumber, setPhoneNumber] = React.useState("")
   const [vapiPhoneNumberId, setVapiPhoneNumberId] = React.useState("")
   const [vapiAssistantId, setVapiAssistantId] = React.useState("")
@@ -146,15 +149,19 @@ function AssignNumberForm({ agentId, agentName, onSuccess, onClose }: AssignNumb
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!phoneNumber.trim() || !vapiPhoneNumberId.trim()) return
+    if (mode === "existing" && (!phoneNumber.trim() || !vapiPhoneNumberId.trim())) return
 
     setSubmitting(true)
     try {
-      const updated = await adminAssignNumber(agentId, {
-        phoneNumber: phoneNumber.trim(),
-        vapiPhoneNumberId: vapiPhoneNumberId.trim(),
-        vapiAssistantId: vapiAssistantId.trim() || undefined,
-      })
+      const updated = mode === "provision"
+        ? await adminProvisionNumber(agentId, {
+            areaCode: areaCode.trim() || undefined,
+          })
+        : await adminAssignNumber(agentId, {
+            phoneNumber: phoneNumber.trim(),
+            vapiPhoneNumberId: vapiPhoneNumberId.trim(),
+            vapiAssistantId: vapiAssistantId.trim() || undefined,
+          })
       toast.success(`Phone number assigned to ${agentName}`)
       onSuccess(updated)
     } catch (err: any) {
@@ -166,44 +173,78 @@ function AssignNumberForm({ agentId, agentName, onSuccess, onClose }: AssignNumb
 
   return (
     <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="phoneNumber">Phone Number (E.164)</Label>
-        <Input
-          id="phoneNumber"
-          placeholder="+15551234567"
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
-          required
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="vapiPhoneNumberId">Vapi Phone Number ID</Label>
-        <Input
-          id="vapiPhoneNumberId"
-          placeholder="vn_abc123"
-          value={vapiPhoneNumberId}
-          onChange={(e) => setVapiPhoneNumberId(e.target.value)}
-          required
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="vapiAssistantId">
-          Vapi Assistant ID <span className="text-muted-foreground">(optional)</span>
-        </Label>
-        <Input
-          id="vapiAssistantId"
-          placeholder="va_xyz789"
-          value={vapiAssistantId}
-          onChange={(e) => setVapiAssistantId(e.target.value)}
-        />
-      </div>
+      <Tabs value={mode} onValueChange={(value) => setMode(value as "provision" | "existing")}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="provision">Provision New</TabsTrigger>
+          <TabsTrigger value="existing">Bind Existing</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="provision" className="mt-4 space-y-4">
+          <div className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
+            This creates a fresh Vapi phone number and, if needed, a shell Vapi assistant wired to the current SpeakOps agent endpoint.
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="areaCode">
+              Preferred Area Code <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="areaCode"
+              inputMode="numeric"
+              placeholder="470"
+              value={areaCode}
+              onChange={(e) => setAreaCode(e.target.value)}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="existing" className="mt-4 space-y-4">
+          <div className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
+            Use this only when the phone number already exists in Vapi. If the agent has no Vapi assistant yet, SpeakOps will create the shell assistant automatically.
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="phoneNumber">Phone Number (E.164)</Label>
+            <Input
+              id="phoneNumber"
+              placeholder="+15551234567"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              required={mode === "existing"}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="vapiPhoneNumberId">Vapi Phone Number ID</Label>
+            <Input
+              id="vapiPhoneNumberId"
+              placeholder="pn_abc123"
+              value={vapiPhoneNumberId}
+              onChange={(e) => setVapiPhoneNumberId(e.target.value)}
+              required={mode === "existing"}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="vapiAssistantId">
+              Vapi Assistant ID <span className="text-muted-foreground">(optional override)</span>
+            </Label>
+            <Input
+              id="vapiAssistantId"
+              placeholder="asst_xyz789"
+              value={vapiAssistantId}
+              onChange={(e) => setVapiAssistantId(e.target.value)}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+
       <div className="mt-2 flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
           Cancel
         </Button>
-        <Button type="submit" disabled={submitting || !phoneNumber.trim() || !vapiPhoneNumberId.trim()}>
+        <Button
+          type="submit"
+          disabled={submitting || (mode === "existing" && (!phoneNumber.trim() || !vapiPhoneNumberId.trim()))}
+        >
           {submitting ? <Spinner className="mr-2 size-4" /> : null}
-          Assign Number
+          {mode === "provision" ? "Provision Number" : "Assign Number"}
         </Button>
       </div>
     </form>
@@ -897,7 +938,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
           <DialogHeader>
             <DialogTitle>Assign Phone Number</DialogTitle>
             <DialogDescription>
-              Assign a Vapi phone number to <strong>{assignTarget?.agentName}</strong>.
+              Provision a fresh Vapi number or bind an existing Vapi number to <strong>{assignTarget?.agentName}</strong>.
             </DialogDescription>
           </DialogHeader>
           {assignTarget ? (

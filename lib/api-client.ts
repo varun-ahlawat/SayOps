@@ -1082,6 +1082,17 @@ export async function adminAssignNumber(
   return res.agent
 }
 
+export async function adminProvisionNumber(
+  agentId: string,
+  data?: { areaCode?: string }
+): Promise<AdminAgent> {
+  const res = await apiFetch<{ agent: AdminAgent }>(`/admin/agents/${encodeURIComponent(agentId)}/provision-number`, {
+    method: "POST",
+    body: data ? JSON.stringify(data) : undefined,
+  })
+  return res.agent
+}
+
 // ---- Stats (To be implemented in backend if missing) ----
 
 export async function fetchStats(): Promise<DashboardStats> {
